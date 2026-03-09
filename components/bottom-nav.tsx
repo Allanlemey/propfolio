@@ -18,8 +18,12 @@ const TABS = [
   { label: "Profil", href: "/profil", icon: CircleUser },
 ];
 
+const NO_SHELL = ["/auth", "/onboarding"];
+
 export function BottomNav() {
   const pathname = usePathname();
+
+  if (NO_SHELL.some((p) => pathname.startsWith(p))) return null;
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border">
