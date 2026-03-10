@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
-const NO_SHELL = ["/auth", "/onboarding"];
+const NO_SHELL = ["/auth", "/onboarding", "/biens/"];
 
 export function Header() {
   const { theme, toggle } = useTheme();

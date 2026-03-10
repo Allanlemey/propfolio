@@ -13,12 +13,12 @@ import {
 const TABS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Mes biens", href: "/biens", icon: Building2 },
-  { label: "Simuler", href: "/simuler", icon: Calculator },
+  { label: "Simuler", href: "/simulation", icon: Calculator },
   { label: "Alertes", href: "/alertes", icon: Bell },
   { label: "Profil", href: "/profil", icon: CircleUser },
 ];
 
-const NO_SHELL = ["/auth", "/onboarding"];
+const NO_SHELL = ["/auth", "/onboarding", "/biens/nouveau"];
 
 export function BottomNav() {
   const pathname = usePathname();
