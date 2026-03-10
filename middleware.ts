@@ -47,6 +47,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Authenticated but hasn't completed onboarding → redirect to /onboarding
+  const onboardingDone = request.cookies.get("propfolio_onboarding_done")?.value;
+  if (user && !onboardingDone && !pathname.startsWith("/onboarding") && !pathname.startsWith("/auth")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/onboarding";
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Check, TrendingUp, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Check, TrendingUp, AlertTriangle, BookOpen, Trash2, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   calcMonthlyPayment,
@@ -216,6 +216,118 @@ function ProjectionChart({ data }: { data: { year: number; net: number }[] }) {
   );
 }
 
+// ── Types ─────────────────────────────────────────────────────
+
+type SavedSim = {
+  id: string;
+  name: string;
+  params: {
+    price: number; apport: number; taux: number; duree: number;
+    loyer: number; regime: string; revaluation: number;
+    vacance: number; inflationLoyers: number;
+  };
+  results: {
+    cashflow: number; rendementBrut: number; rendementNet: number;
+  };
+  created_at: string;
+};
+
+// ── Saved Simulations List ────────────────────────────────────
+
+function SimList({
+  sims, activeId, onLoad, onDelete,
+}: {
+  sims: SavedSim[]; activeId: string | null;
+  onLoad: (s: SavedSim) => void; onDelete: (id: string) => void;
+}) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  if (sims.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-text flex items-center gap-2">
+          <BookOpen size={14} className="text-accent" />
+          Simulations sauvegardées
+          <span className="font-mono text-xs font-normal text-text-secondary bg-bg border border-border rounded-full px-2 py-0.5">
+            {sims.length}
+          </span>
+        </p>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
+        {sims.map(s => {
+          const cfPos = s.results.cashflow >= 0;
+          const isActive = activeId === s.id;
+          const date = new Date(s.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+
+          return (
+            <div
+              key={s.id}
+              className={`snap-start shrink-0 w-52 rounded-2xl border p-3.5 transition-all ${
+                isActive
+                  ? "border-accent/60 bg-accent/5 shadow-[0_0_0_1px_rgba(108,99,255,0.2)]"
+                  : "border-border bg-card hover:border-accent/30"
+              }`}
+            >
+              {/* Name + date */}
+              <div className="flex items-start justify-between gap-1 mb-2">
+                <p className="text-xs font-semibold text-text leading-tight line-clamp-2">{s.name}</p>
+                <span className="text-[10px] text-text-secondary shrink-0">{date}</span>
+              </div>
+
+              {/* Results */}
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className={`font-mono text-base font-bold leading-tight ${cfPos ? "text-green" : "text-red"}`}>
+                    {cfPos ? "+" : "−"}{fmt(s.results.cashflow)} €
+                  </p>
+                  <p className="text-[10px] text-text-secondary">cashflow/mois</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-mono text-sm font-bold text-[#FBBF24]">
+                    {s.results.rendementNet.toFixed(1)} %
+                  </p>
+                  <p className="text-[10px] text-text-secondary">rendement net</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onLoad(s)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors ${
+                    isActive
+                      ? "bg-accent text-white"
+                      : "bg-bg border border-border text-text-secondary hover:text-text hover:border-accent/40"
+                  }`}
+                >
+                  <ChevronRight size={11} />
+                  {isActive ? "Chargée" : "Charger"}
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeletingId(s.id);
+                    await onDelete(s.id);
+                    setDeletingId(null);
+                  }}
+                  disabled={deletingId === s.id}
+                  className="w-7 h-7 rounded-lg bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-red hover:border-red/30 transition-colors disabled:opacity-40"
+                >
+                  {deletingId === s.id
+                    ? <Loader2 size={11} className="animate-spin" />
+                    : <Trash2 size={11} />}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────
 
 const REGIMES = ["LMNP micro-BIC", "LMNP réel", "Nu micro-foncier", "Nu réel"];
@@ -233,6 +345,45 @@ export default function SimulationPage() {
   const [revaluation, setRevaluation] = useState(2);
   const [vacance, setVacance] = useState(4);
   const [inflationLoyers, setInflationLoyers] = useState(1.8);
+
+  // Saved simulations
+  const [savedSims, setSavedSims] = useState<SavedSim[]>([]);
+  const [activeSimId, setActiveSimId] = useState<string | null>(null);
+  const simulatorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadSims() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("simulations")
+        .select("id, name, params, results, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setSavedSims(data as SavedSim[]);
+    }
+    loadSims();
+  }, []);
+
+  function loadSim(s: SavedSim) {
+    setPrice(s.params.price);
+    setApport(s.params.apport);
+    setTaux(s.params.taux);
+    setDuree(s.params.duree);
+    setLoyer(s.params.loyer);
+    setRegime(s.params.regime);
+    setRevaluation(s.params.revaluation ?? 2);
+    setVacance(s.params.vacance ?? 4);
+    setInflationLoyers(s.params.inflationLoyers ?? 1.8);
+    setActiveSimId(s.id);
+    simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function deleteSim(id: string) {
+    await supabase.from("simulations").delete().eq("id", id);
+    setSavedSims(prev => prev.filter(s => s.id !== id));
+    if (activeSimId === id) setActiveSimId(null);
+  }
 
   // Save
   const [saving, setSaving] = useState(false);
@@ -316,6 +467,17 @@ export default function SimulationPage() {
       },
     });
 
+    // Refresh saved list
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (u) {
+      const { data } = await supabase
+        .from("simulations")
+        .select("id, name, params, results, created_at")
+        .eq("user_id", u.id)
+        .order("created_at", { ascending: false });
+      if (data) setSavedSims(data as SavedSim[]);
+    }
+
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -335,8 +497,16 @@ export default function SimulationPage() {
         </p>
       </div>
 
+      {/* Saved simulations */}
+      <SimList
+        sims={savedSims}
+        activeId={activeSimId}
+        onLoad={loadSim}
+        onDelete={deleteSim}
+      />
+
       {/* Inputs */}
-      <div className="bg-card rounded-2xl p-4 border border-border space-y-5">
+      <div ref={simulatorRef} className="bg-card rounded-2xl p-4 border border-border space-y-5">
         <Slider
           label="Prix du bien"
           value={price}

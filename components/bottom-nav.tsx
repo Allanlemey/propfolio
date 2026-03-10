@@ -18,7 +18,7 @@ const TABS = [
   { label: "Profil", href: "/profil", icon: CircleUser },
 ];
 
-const NO_SHELL = ["/auth", "/onboarding", "/biens/nouveau"];
+const NO_SHELL = ["/auth", "/onboarding", "/biens/nouveau", "/cgu", "/confidentialite", "/contact"];
 
 export function BottomNav() {
   const pathname = usePathname();

@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, Info, Pencil, Trash2, X, Check, ChevronDown, TrendingUp, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   getChargeAmounts,
-  computeMonthlyTax,
   computeCashflowLines,
   computeScoreDetails,
 } from "@/lib/calculations";
@@ -88,6 +87,31 @@ function getImprovements(scores: ScoreDetail): string[] {
     .map((t) => t.tip);
 }
 
+// ── Edit Form type ────────────────────────────────────────────
+
+type EditForm = {
+  name: string;
+  address: string;
+  type: string;
+  surface: string;
+  purchase_price: string;
+  current_value: string;
+  purchase_date: string;
+  regime: string;
+  monthly_rent: string;
+  vacancy_rate: string;
+  taxe_fonciere: string;
+  copro: string;
+  pno: string;
+  gli: string;
+  travaux: string;
+  loan_amount: string;
+  loan_rate: string;
+  loan_duration: string;
+  loan_monthly: string;
+  loan_remaining: string;
+};
+
 // ── SVG Score Ring ────────────────────────────────────────────
 
 function ScoreRing({ score, size = 100 }: { score: number; size?: number }) {
@@ -159,12 +183,25 @@ function ScoreRing({ score, size = 100 }: { score: number; size?: number }) {
 
 // ── Tab: Vue d'ensemble ───────────────────────────────────────
 
+type MarketData = {
+  prixM2: number;
+  min: number;
+  max: number;
+  count: number;
+  city: string;
+  lastUpdate: string | null;
+} | null;
+
 function TabOverview({
   property,
   loan,
+  marketData,
+  marketLoading,
 }: {
   property: Property;
   loan: Loan | null;
+  marketData: MarketData;
+  marketLoading: boolean;
 }) {
   const plusValue = property.current_value - property.purchase_price;
   const plusValuePct =
@@ -180,6 +217,34 @@ function TabOverview({
             100
         )
       : 0;
+
+  const remainingMonths = (() => {
+    if (!loan || !loan.remaining_capital || !loan.monthly_payment) return null;
+    const r = (loan.rate ?? 0) / 100 / 12;
+    const rem = loan.remaining_capital ?? 0;
+    const pmt = loan.monthly_payment;
+    if (pmt <= 0) return null;
+    if (r === 0) return Math.round(rem / pmt);
+    const val = 1 - (r * rem) / pmt;
+    if (val <= 0) return null;
+    return Math.round(-Math.log(val) / Math.log(1 + r));
+  })();
+
+  const remainingMonthsLabel = (() => {
+    if (remainingMonths === null) return null;
+    const y = Math.floor(remainingMonths / 12);
+    const m = remainingMonths % 12;
+    if (y === 0) return `${m} mois`;
+    if (m === 0) return `${y} an${y > 1 ? "s" : ""}`;
+    return `${y} an${y > 1 ? "s" : ""} ${m} mois`;
+  })();
+
+  const endDate = (() => {
+    if (remainingMonths === null) return null;
+    const d = new Date();
+    d.setMonth(d.getMonth() + remainingMonths);
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  })();
 
   type InfoRow = { label: string; value: string; valueClass?: string };
 
@@ -230,6 +295,64 @@ function TabOverview({
         ))}
       </div>
 
+      {/* Prix marché */}
+      {(marketLoading || marketData) && (
+        <div className="bg-card rounded-2xl p-4 border border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={14} className="text-accent" />
+            <p className="text-sm font-semibold text-text">Prix du marché local</p>
+          </div>
+
+          {marketLoading ? (
+            <div className="flex items-center gap-2 py-1">
+              <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+              <span className="text-xs text-text-secondary">Chargement des données DVF…</span>
+            </div>
+          ) : marketData ? (
+            <>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="font-mono font-bold text-2xl text-text">
+                  {marketData.prixM2.toLocaleString("fr-FR")} €
+                </span>
+                <span className="text-sm text-text-secondary">/m² à {marketData.city}</span>
+              </div>
+              <p className="text-[11px] text-text-secondary mb-3">
+                {marketData.min.toLocaleString("fr-FR")} – {marketData.max.toLocaleString("fr-FR")} €/m²
+                &nbsp;·&nbsp;{marketData.count} ventes
+                {marketData.lastUpdate ? ` · ${marketData.lastUpdate}` : ""}
+                &nbsp;· Source DVF data.gouv.fr
+              </p>
+
+              {property.surface && property.surface > 0 && (() => {
+                const propM2 = property.current_value / property.surface;
+                const delta = ((propM2 - marketData.prixM2) / marketData.prixM2) * 100;
+                const isAbove = delta > 5;
+                const isBelow = delta < -5;
+                return (
+                  <div className={`rounded-xl p-3 flex items-center justify-between ${
+                    isAbove ? "bg-green/8 border border-green/20"
+                    : isBelow ? "bg-accent/8 border border-accent/20"
+                    : "bg-border/30 border border-border"
+                  }`}>
+                    <div>
+                      <p className={`text-xs font-semibold ${isAbove ? "text-green" : isBelow ? "text-accent" : "text-text-secondary"}`}>
+                        {isAbove ? "Au-dessus du marché" : isBelow ? "Potentiel de revalorisation" : "Dans les prix du marché"}
+                      </p>
+                      <p className="text-[11px] text-text-secondary mt-0.5">
+                        Votre bien : {Math.round(propM2).toLocaleString("fr-FR")} €/m²
+                      </p>
+                    </div>
+                    <span className={`font-mono font-bold text-lg ${isAbove ? "text-green" : isBelow ? "text-accent" : "text-text"}`}>
+                      {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
+                    </span>
+                  </div>
+                );
+              })()}
+            </>
+          ) : null}
+        </div>
+      )}
+
       {/* Crédit */}
       {loan ? (
         <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
@@ -237,35 +360,47 @@ function TabOverview({
           {[
             { label: "Montant initial", value: `${fmt(loan.amount ?? 0)} €` },
             { label: "Taux", value: `${loan.rate ?? 0} %` },
-            { label: "Durée", value: `${loan.duration_years ?? 0} ans` },
-            {
-              label: "Mensualité",
-              value: `${fmt(loan.monthly_payment)} €/mois`,
-            },
-            {
-              label: "Capital restant dû",
-              value: `${fmt(loan.remaining_capital ?? 0)} €`,
-            },
+            { label: "Durée totale", value: `${loan.duration_years ?? 0} ans` },
+            { label: "Mensualité", value: `${fmt(loan.monthly_payment)} €/mois` },
+            { label: "Capital restant dû", value: `${fmt(loan.remaining_capital ?? 0)} €` },
           ].map((row) => (
-            <div
-              key={row.label}
-              className="flex justify-between items-center"
-            >
+            <div key={row.label} className="flex justify-between items-center">
               <span className="text-sm text-text-secondary">{row.label}</span>
               <span className="text-sm font-mono text-text">{row.value}</span>
             </div>
           ))}
 
+          {remainingMonthsLabel && (
+            <div className="flex justify-between items-center py-2 px-3 bg-accent/6 rounded-xl border border-accent/20">
+              <span className="text-sm text-text-secondary">Mensualités restantes</span>
+              <div className="text-right">
+                <span className="text-sm font-mono font-bold text-accent">
+                  {remainingMonths} mois
+                </span>
+                <span className="text-[10px] text-text-secondary block">
+                  {remainingMonthsLabel}{endDate ? ` · fin ${endDate}` : ""}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="flex justify-between text-xs text-text-secondary mb-1.5">
               <span>Remboursement</span>
-              <span className="font-semibold text-text">{loanProgress} %</span>
+              <span className="font-semibold text-text">{loanProgress} % remboursé</span>
             </div>
-            <div className="h-2 bg-border rounded-full overflow-hidden">
+            <div className="h-2.5 bg-border rounded-full overflow-hidden">
               <div
-                className="h-full bg-accent rounded-full transition-all duration-700"
-                style={{ width: `${loanProgress}%` }}
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${loanProgress}%`,
+                  background: "linear-gradient(to right, #6C63FF, #00D9A6)",
+                }}
               />
+            </div>
+            <div className="flex justify-between text-[10px] text-text-secondary mt-1">
+              <span>{fmt(loan.amount ?? 0)} € emprunté</span>
+              <span>{fmt(loan.remaining_capital ?? 0)} € restant</span>
             </div>
           </div>
         </div>
@@ -391,7 +526,6 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
 
   return (
     <div className="space-y-4">
-      {/* Big ring */}
       <div className="bg-card rounded-2xl p-6 border border-border flex flex-col items-center gap-3">
         <ScoreRing score={scores.global} size={140} />
         <p className="text-sm text-text-secondary text-center max-w-xs">
@@ -402,7 +536,6 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
         </p>
       </div>
 
-      {/* Criteria bars */}
       <div className="bg-card rounded-2xl p-4 border border-border space-y-4">
         <p className="text-sm font-semibold text-text">Détail par critère</p>
         {CRITERIA.map(({ key, label, weight }) => {
@@ -435,7 +568,6 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
         })}
       </div>
 
-      {/* Improvements */}
       {improvements.length > 0 && (
         <div className="bg-card rounded-2xl p-4 border border-border">
           <p className="text-sm font-semibold text-text mb-3">
@@ -459,6 +591,511 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
   );
 }
 
+// ── Prix m² estimation result type ───────────────────────────
+
+type PrixEstResult = {
+  prixM2: number;
+  min: number;
+  max: number;
+  count: number;
+  city: string;
+  radiusKm: number;
+  lastUpdate: string | null;
+};
+
+// ── Edit Sheet ────────────────────────────────────────────────
+
+function EditSheet({
+  open,
+  onClose,
+  form,
+  onChange,
+  onSave,
+  saving,
+  hasLoan,
+}: {
+  open: boolean;
+  onClose: () => void;
+  form: EditForm;
+  onChange: (key: keyof EditForm, value: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  hasLoan: boolean;
+}) {
+  const REGIME_OPTIONS = [
+    "LMNP micro-BIC",
+    "LMNP réel simplifié",
+    "Location nue micro-foncier",
+    "Location nue régime réel",
+  ];
+
+  const TYPE_OPTIONS = [
+    { value: "appartement", label: "Appartement" },
+    { value: "maison", label: "Maison" },
+    { value: "studio", label: "Studio" },
+    { value: "immeuble", label: "Immeuble" },
+    { value: "commercial", label: "Local commercial" },
+  ];
+
+  const [prixEst, setPrixEst] = useState<PrixEstResult | null>(null);
+  const [estimLoading, setEstimLoading] = useState(false);
+  const [estimError, setEstimError] = useState<string | null>(null);
+
+  async function estimatePrix() {
+    if (!form.address || form.address.trim().length < 5) return;
+    setEstimLoading(true);
+    setEstimError(null);
+    setPrixEst(null);
+    try {
+      const res = await fetch(`/api/prix-m2?address=${encodeURIComponent(form.address)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setPrixEst(data);
+      } else {
+        setEstimError(data.error ?? "Données indisponibles pour cette adresse");
+      }
+    } catch {
+      setEstimError("Erreur réseau");
+    } finally {
+      setEstimLoading(false);
+    }
+  }
+
+  const inputClass =
+    "w-full bg-bg border border-border rounded-xl px-3 py-2.5 text-sm text-text placeholder-text-muted focus:outline-none focus:border-accent transition-colors";
+  const labelClass = "block text-xs text-text-secondary mb-1.5 font-medium";
+
+  return (
+    <>
+      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      {open && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <div
+            className="relative bg-card rounded-t-3xl border-t border-border max-h-[92vh] flex flex-col"
+            style={{ animation: "slideUp 0.3s ease-out" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
+              <p className="text-base font-bold text-text">Modifier le bien</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+                >
+                  {saving ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Check size={14} />
+                  )}
+                  Enregistrer
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg border border-border text-text-secondary"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6">
+              {/* Section: Bien */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
+                  Informations du bien
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className={labelClass}>Nom du bien</label>
+                    <input
+                      className={inputClass}
+                      value={form.name}
+                      onChange={(e) => onChange("name", e.target.value)}
+                      placeholder="Ex: Studio Paris 11e"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Type de bien</label>
+                    <div className="relative">
+                      <select
+                        className={`${inputClass} appearance-none pr-8`}
+                        value={form.type}
+                        onChange={(e) => onChange("type", e.target.value)}
+                      >
+                        {TYPE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Surface (m²)</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      value={form.surface}
+                      onChange={(e) => onChange("surface", e.target.value)}
+                      placeholder="Ex: 32"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Adresse complète</label>
+                    <div className="flex gap-2">
+                      <input
+                        className={inputClass}
+                        value={form.address}
+                        onChange={(e) => {
+                          onChange("address", e.target.value);
+                          setPrixEst(null);
+                          setEstimError(null);
+                        }}
+                        placeholder="Ex: 12 rue de la Paix, 75001 Paris"
+                      />
+                      <button
+                        type="button"
+                        onClick={estimatePrix}
+                        disabled={estimLoading || form.address.trim().length < 5}
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 bg-accent/10 border border-accent/30 text-accent rounded-xl text-xs font-semibold hover:bg-accent/20 transition-colors disabled:opacity-40"
+                        title="Estimer le prix du marché"
+                      >
+                        {estimLoading ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <TrendingUp size={13} />
+                        )}
+                        <span className="hidden sm:inline">Marché</span>
+                      </button>
+                    </div>
+
+                    {/* Estimation result */}
+                    {prixEst && (
+                      <div className="mt-2 p-3 bg-accent/5 border border-accent/20 rounded-xl">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-accent">
+                            Prix marché — {prixEst.city}
+                          </span>
+                          <span className="text-[10px] text-text-secondary">
+                            {prixEst.radiusKm} km · {prixEst.count} ventes
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-mono font-bold text-lg text-text">
+                            {prixEst.prixM2.toLocaleString("fr-FR")} €/m²
+                          </span>
+                          <span className="text-[11px] text-text-secondary">
+                            ({prixEst.min.toLocaleString("fr-FR")} – {prixEst.max.toLocaleString("fr-FR")} €/m²)
+                          </span>
+                        </div>
+                        {prixEst.lastUpdate && (
+                          <p className="text-[10px] text-text-secondary mt-1">
+                            Dernière transaction : {prixEst.lastUpdate} · Source : DVF data.gouv.fr
+                          </p>
+                        )}
+                        {form.surface && parseFloat(form.surface) > 0 && (
+                          <div className="mt-2 pt-2 border-t border-accent/15 flex justify-between">
+                            <span className="text-xs text-text-secondary">
+                              Estimation pour {form.surface} m²
+                            </span>
+                            <span className="text-xs font-mono font-bold text-green">
+                              ~{Math.round(prixEst.prixM2 * parseFloat(form.surface)).toLocaleString("fr-FR")} €
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Estimation error */}
+                    {estimError && (
+                      <p className="mt-2 text-[11px] text-red px-1">{estimError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className={labelClass}>Date d&apos;achat</label>
+                    <input
+                      className={inputClass}
+                      type="date"
+                      value={form.purchase_date}
+                      onChange={(e) => onChange("purchase_date", e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Prix d&apos;achat (€)</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.purchase_price}
+                        onChange={(e) => onChange("purchase_price", e.target.value)}
+                        placeholder="150000"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Valeur actuelle (€)</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.current_value}
+                        onChange={(e) => onChange("current_value", e.target.value)}
+                        placeholder="160000"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Régime fiscal</label>
+                    <div className="relative">
+                      <select
+                        className={`${inputClass} appearance-none pr-8`}
+                        value={form.regime}
+                        onChange={(e) => onChange("regime", e.target.value)}
+                      >
+                        <option value="">-- Choisir --</option>
+                        {REGIME_OPTIONS.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Revenus */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
+                  Revenus locatifs
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>Loyer mensuel (€)</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      value={form.monthly_rent}
+                      onChange={(e) => onChange("monthly_rent", e.target.value)}
+                      placeholder="800"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Taux de vacance (%)</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      value={form.vacancy_rate}
+                      onChange={(e) => onChange("vacancy_rate", e.target.value)}
+                      placeholder="8"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Charges */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
+                  Charges annuelles (€/an)
+                </p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Taxe foncière</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.taxe_fonciere}
+                        onChange={(e) => onChange("taxe_fonciere", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Charges copro</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.copro}
+                        onChange={(e) => onChange("copro", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Assurance PNO</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.pno}
+                        onChange={(e) => onChange("pno", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Assurance GLI</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.gli}
+                        onChange={(e) => onChange("gli", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Provision travaux</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      value={form.travaux}
+                      onChange={(e) => onChange("travaux", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Crédit */}
+              {hasLoan && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
+                    Crédit immobilier
+                  </p>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Montant emprunté (€)</label>
+                        <input
+                          className={inputClass}
+                          type="number"
+                          value={form.loan_amount}
+                          onChange={(e) => onChange("loan_amount", e.target.value)}
+                          placeholder="120000"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Taux (%)</label>
+                        <input
+                          className={inputClass}
+                          type="number"
+                          step="0.01"
+                          value={form.loan_rate}
+                          onChange={(e) => onChange("loan_rate", e.target.value)}
+                          placeholder="3.5"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Durée (ans)</label>
+                        <input
+                          className={inputClass}
+                          type="number"
+                          value={form.loan_duration}
+                          onChange={(e) => onChange("loan_duration", e.target.value)}
+                          placeholder="20"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Mensualité (€)</label>
+                        <input
+                          className={inputClass}
+                          type="number"
+                          value={form.loan_monthly}
+                          onChange={(e) => onChange("loan_monthly", e.target.value)}
+                          placeholder="680"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Capital restant dû (€)</label>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        value={form.loan_remaining}
+                        onChange={(e) => onChange("loan_remaining", e.target.value)}
+                        placeholder="95000"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="h-4" />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Delete Modal ──────────────────────────────────────────────
+
+function DeleteModal({
+  open,
+  propertyName,
+  onConfirm,
+  onCancel,
+  deleting,
+}: {
+  open: boolean;
+  propertyName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  deleting: boolean;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div className="relative bg-card rounded-2xl border border-border p-6 max-w-sm w-full shadow-2xl">
+        <div className="w-12 h-12 rounded-2xl bg-red/15 flex items-center justify-center mx-auto mb-4">
+          <Trash2 size={20} className="text-red" />
+        </div>
+        <p className="text-base font-bold text-text text-center mb-1">
+          Supprimer ce bien ?
+        </p>
+        <p className="text-sm text-text-secondary text-center leading-relaxed mb-6">
+          <span className="font-semibold text-text">{propertyName}</span> et
+          toutes les données associées (crédit, charges, revenus) seront
+          définitivement supprimées.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-text-secondary hover:bg-bg transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl bg-red text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {deleting ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              "Supprimer"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────
 
 export default function BienDetailPage() {
@@ -472,6 +1109,36 @@ export default function BienDetailPage() {
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
+  const [marketData, setMarketData] = useState<MarketData>(null);
+  const [marketLoading, setMarketLoading] = useState(false);
+
+  // Edit / delete state
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm>({
+    name: "",
+    address: "",
+    type: "appartement",
+    surface: "",
+    purchase_price: "",
+    current_value: "",
+    purchase_date: "",
+    regime: "",
+    monthly_rent: "",
+    vacancy_rate: "8",
+    taxe_fonciere: "",
+    copro: "",
+    pno: "",
+    gli: "",
+    travaux: "",
+    loan_amount: "",
+    loan_rate: "",
+    loan_duration: "",
+    loan_monthly: "",
+    loan_remaining: "",
+  });
 
   useEffect(() => {
     async function load() {
@@ -512,6 +1179,148 @@ export default function BienDetailPage() {
 
     load();
   }, [id, router]);
+
+  // Auto-fetch market price when property is loaded and has an address
+  useEffect(() => {
+    if (!property?.address || property.address.length < 5) return;
+    setMarketLoading(true);
+    setMarketData(null);
+    fetch(`/api/prix-m2?address=${encodeURIComponent(property.address)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.prixM2) setMarketData(data as MarketData);
+      })
+      .catch(() => {})
+      .finally(() => setMarketLoading(false));
+  }, [property?.address]);
+
+  function openEdit() {
+    if (!property) return;
+    const { taxeFonciere, copro, pno, gli, travaux } = getChargeAmounts(charges);
+    setEditForm({
+      name: property.name,
+      address: property.address ?? "",
+      type: property.type,
+      surface: property.surface?.toString() ?? "",
+      purchase_price: property.purchase_price.toString(),
+      current_value: property.current_value.toString(),
+      purchase_date: property.purchase_date ?? "",
+      regime: property.regime ?? "",
+      monthly_rent: revenue?.monthly_rent?.toString() ?? "",
+      vacancy_rate: revenue?.vacancy_rate?.toString() ?? "8",
+      taxe_fonciere: taxeFonciere.toString(),
+      copro: copro.toString(),
+      pno: pno.toString(),
+      gli: gli.toString(),
+      travaux: travaux.toString(),
+      loan_amount: loan?.amount?.toString() ?? "",
+      loan_rate: loan?.rate?.toString() ?? "",
+      loan_duration: loan?.duration_years?.toString() ?? "",
+      loan_monthly: loan?.monthly_payment?.toString() ?? "",
+      loan_remaining: loan?.remaining_capital?.toString() ?? "",
+    });
+    setEditOpen(true);
+  }
+
+  function handleChange(key: keyof EditForm, value: string) {
+    setEditForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!property) return;
+    setSaving(true);
+    try {
+      // Update property
+      await supabase
+        .from("properties")
+        .update({
+          name: editForm.name,
+          address: editForm.address || null,
+          type: editForm.type,
+          surface: editForm.surface ? parseFloat(editForm.surface) : null,
+          purchase_price: parseFloat(editForm.purchase_price) || 0,
+          current_value: parseFloat(editForm.current_value) || 0,
+          purchase_date: editForm.purchase_date || null,
+          regime: editForm.regime || null,
+        })
+        .eq("id", id);
+
+      // Update loan if it exists
+      if (loan?.id) {
+        await supabase
+          .from("loans")
+          .update({
+            amount: parseFloat(editForm.loan_amount) || 0,
+            rate: parseFloat(editForm.loan_rate) || 0,
+            duration_years: parseFloat(editForm.loan_duration) || 0,
+            monthly_payment: parseFloat(editForm.loan_monthly) || 0,
+            remaining_capital: parseFloat(editForm.loan_remaining) || 0,
+          })
+          .eq("id", loan.id);
+      }
+
+      // Upsert revenue
+      const rentVal = parseFloat(editForm.monthly_rent) || 0;
+      const vacancyVal = parseFloat(editForm.vacancy_rate) || 8;
+      if (revenue) {
+        await supabase
+          .from("revenues")
+          .update({ monthly_rent: rentVal, vacancy_rate: vacancyVal })
+          .eq("property_id", id);
+      } else if (rentVal > 0) {
+        await supabase
+          .from("revenues")
+          .insert({ property_id: id, monthly_rent: rentVal, vacancy_rate: vacancyVal });
+      }
+
+      // Replace charges: delete all then re-insert non-zero
+      await supabase.from("charges").delete().eq("property_id", id);
+      const newCharges = [
+        { property_id: id, type: "taxe_fonciere", amount: parseFloat(editForm.taxe_fonciere) || 0, frequency: "annual" },
+        { property_id: id, type: "copro", amount: parseFloat(editForm.copro) || 0, frequency: "annual" },
+        { property_id: id, type: "pno", amount: parseFloat(editForm.pno) || 0, frequency: "annual" },
+        { property_id: id, type: "gli", amount: parseFloat(editForm.gli) || 0, frequency: "annual" },
+        { property_id: id, type: "travaux", amount: parseFloat(editForm.travaux) || 0, frequency: "annual" },
+      ].filter((c) => c.amount > 0);
+      if (newCharges.length > 0) {
+        await supabase.from("charges").insert(newCharges);
+      }
+
+      // Reload data
+      const [
+        { data: prop },
+        { data: loanData },
+        { data: chargesData },
+        { data: revData },
+      ] = await Promise.all([
+        supabase.from("properties").select("*").eq("id", id).single(),
+        supabase
+          .from("loans")
+          .select("id, amount, rate, duration_years, monthly_payment, remaining_capital")
+          .eq("property_id", id)
+          .maybeSingle(),
+        supabase.from("charges").select("type, amount, frequency").eq("property_id", id),
+        supabase.from("revenues").select("monthly_rent, vacancy_rate").eq("property_id", id).maybeSingle(),
+      ]);
+
+      if (prop) setProperty(prop);
+      setLoan(loanData ?? null);
+      setCharges(chargesData ?? []);
+      setRevenue(revData ?? null);
+      setEditOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    await supabase.from("charges").delete().eq("property_id", id);
+    await supabase.from("revenues").delete().eq("property_id", id);
+    await supabase.from("loans").delete().eq("property_id", id);
+    await supabase.from("properties").delete().eq("id", id);
+    router.push("/biens");
+  }
 
   if (loading || !property) {
     return (
@@ -573,6 +1382,20 @@ export default function BienDetailPage() {
           >
             {scores.global}/100
           </div>
+          <button
+            onClick={openEdit}
+            className="w-9 h-9 rounded-xl bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-accent transition-colors shrink-0"
+            aria-label="Modifier"
+          >
+            <Pencil size={15} />
+          </button>
+          <button
+            onClick={() => setDeleteOpen(true)}
+            className="w-9 h-9 rounded-xl bg-bg border border-[#FF6B6B]/30 flex items-center justify-center text-[#FF6B6B]/70 hover:text-[#FF6B6B] hover:border-[#FF6B6B] transition-colors shrink-0"
+            aria-label="Supprimer"
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       </div>
 
@@ -663,10 +1486,37 @@ export default function BienDetailPage() {
         </div>
 
         {/* Tab content */}
-        {tab === 0 && <TabOverview property={property} loan={loan} />}
+        {tab === 0 && (
+          <TabOverview
+            property={property}
+            loan={loan}
+            marketData={marketData}
+            marketLoading={marketLoading}
+          />
+        )}
         {tab === 1 && <TabCashflow lines={lines} total={cashflowTotal} />}
         {tab === 2 && <TabScore scores={scores} />}
       </div>
+
+      {/* Edit bottom sheet */}
+      <EditSheet
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        form={editForm}
+        onChange={handleChange}
+        onSave={handleSave}
+        saving={saving}
+        hasLoan={!!loan}
+      />
+
+      {/* Delete confirmation modal */}
+      <DeleteModal
+        open={deleteOpen}
+        propertyName={property.name}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+        deleting={deleting}
+      />
     </div>
   );
 }

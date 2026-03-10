@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   LogOut,
@@ -498,8 +499,8 @@ export default function ProfilPage() {
           </p>
         </div>
 
-        <a
-          href="#"
+        <Link
+          href="/cgu"
           className="flex items-center justify-between px-4 py-3.5 border-b border-border hover:bg-bg/50 transition-colors"
         >
           <div className="flex items-center gap-3 text-text-secondary">
@@ -507,10 +508,10 @@ export default function ProfilPage() {
             <span className="text-sm">Conditions générales d&apos;utilisation</span>
           </div>
           <ChevronRight size={14} className="text-text-secondary" />
-        </a>
+        </Link>
 
-        <a
-          href="#"
+        <Link
+          href="/confidentialite"
           className="flex items-center justify-between px-4 py-3.5 border-b border-border hover:bg-bg/50 transition-colors"
         >
           <div className="flex items-center gap-3 text-text-secondary">
@@ -518,10 +519,10 @@ export default function ProfilPage() {
             <span className="text-sm">Politique de confidentialité</span>
           </div>
           <ChevronRight size={14} className="text-text-secondary" />
-        </a>
+        </Link>
 
-        <a
-          href="mailto:contact@propfolio.fr"
+        <Link
+          href="/contact"
           className="flex items-center justify-between px-4 py-3.5 hover:bg-bg/50 transition-colors"
         >
           <div className="flex items-center gap-3 text-text-secondary">
@@ -529,7 +530,7 @@ export default function ProfilPage() {
             <span className="text-sm">Contact</span>
           </div>
           <ChevronRight size={14} className="text-text-secondary" />
-        </a>
+        </Link>
       </Section>
 
       <p className="text-[11px] text-text-secondary text-center pb-2">

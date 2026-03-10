@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X, Check, Loader2, Info, AlertTriangle } from "lucide-react";
+import { ArrowLeft, X, Check, Loader2, Info, AlertTriangle, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { calcRemainingCapital } from "@/lib/calculations";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -28,7 +29,10 @@ function parseFrenchDate(s: string): string | null {
 interface FormData {
   // Step 1
   name: string;
-  address: string;
+  address_number: string;
+  address_street: string;
+  address_city: string;
+  address_postal: string;
   type: string;
   surface: string;
   purchase_price: string;
@@ -39,6 +43,7 @@ interface FormData {
   loan_amount: string;
   loan_rate: string;
   loan_duration: string;
+  loan_start_date: string; // YYYY-MM
   // Step 3
   monthly_rent: string;
   regime: string;
@@ -51,7 +56,10 @@ interface FormData {
 
 const INITIAL: FormData = {
   name: "",
-  address: "",
+  address_number: "",
+  address_street: "",
+  address_city: "",
+  address_postal: "",
   type: "",
   surface: "",
   purchase_price: "",
@@ -61,6 +69,7 @@ const INITIAL: FormData = {
   loan_amount: "",
   loan_rate: "",
   loan_duration: "",
+  loan_start_date: "",
   monthly_rent: "",
   regime: "",
   taxe_fonciere: "",
@@ -139,6 +148,16 @@ function Field({
 
 // ── Step 1 — Le bien ──────────────────────────────────────────
 
+type PrixEstResult = {
+  prixM2: number;
+  min: number;
+  max: number;
+  count: number;
+  city: string;
+  radiusKm: number;
+  lastUpdate: string | null;
+};
+
 function Step1({
   data,
   update,
@@ -146,6 +165,38 @@ function Step1({
   data: FormData;
   update: (field: keyof FormData, value: string) => void;
 }) {
+  const [prixEst, setPrixEst] = useState<PrixEstResult | null>(null);
+  const [estimLoading, setEstimLoading] = useState(false);
+  const [estimError, setEstimError] = useState<string | null>(null);
+
+  async function estimatePrix() {
+    const address = [
+      data.address_number.trim(),
+      data.address_street.trim(),
+      data.address_postal.trim(),
+      data.address_city.trim(),
+    ]
+      .filter(Boolean)
+      .join(" ");
+    if (address.length < 5) return;
+    setEstimLoading(true);
+    setEstimError(null);
+    setPrixEst(null);
+    try {
+      const res = await fetch(`/api/prix-m2?address=${encodeURIComponent(address)}`);
+      const json = await res.json();
+      if (res.ok) {
+        setPrixEst(json);
+      } else {
+        setEstimError(json.error ?? "Données indisponibles pour cette zone");
+      }
+    } catch {
+      setEstimError("Erreur réseau");
+    } finally {
+      setEstimLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Field
@@ -156,13 +207,98 @@ function Step1({
         onChange={(e) => update("name", e.target.value)}
         required
       />
-      <Field
-        label="Adresse"
-        type="text"
-        placeholder="15 rue de la Paix, Paris 75002"
-        value={data.address}
-        onChange={(e) => update("address", e.target.value)}
-      />
+      {/* Adresse structurée */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-text-secondary">Adresse</p>
+        <div className="grid grid-cols-3 gap-2">
+          <Field
+            label="N°"
+            type="text"
+            placeholder="15"
+            value={data.address_number}
+            onChange={(e) => update("address_number", e.target.value)}
+          />
+          <div className="col-span-2">
+            <Field
+              label="Rue"
+              type="text"
+              placeholder="rue de la Paix"
+              value={data.address_street}
+              onChange={(e) => update("address_street", e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Field
+            label="Code postal"
+            type="text"
+            placeholder="75002"
+            value={data.address_postal}
+            onChange={(e) => { update("address_postal", e.target.value); setPrixEst(null); setEstimError(null); }}
+            maxLength={5}
+          />
+          <Field
+            label="Ville"
+            type="text"
+            placeholder="Paris"
+            value={data.address_city}
+            onChange={(e) => { update("address_city", e.target.value); setPrixEst(null); setEstimError(null); }}
+          />
+        </div>
+
+        {/* Prix marché */}
+        <button
+          type="button"
+          onClick={estimatePrix}
+          disabled={estimLoading || [data.address_street, data.address_city, data.address_postal].every((v) => !v.trim())}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-accent/30 bg-accent/5 text-accent text-sm font-semibold hover:bg-accent/10 transition-colors disabled:opacity-40"
+        >
+          {estimLoading ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <TrendingUp size={14} />
+          )}
+          Estimer le prix du marché local
+        </button>
+
+        {prixEst && (
+          <div className="p-3 bg-accent/5 border border-accent/20 rounded-xl">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-accent">
+                Marché — {prixEst.city}
+              </span>
+              <span className="text-[10px] text-text-secondary">
+                {prixEst.radiusKm} km · {prixEst.count} ventes
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono font-bold text-lg text-text">
+                {prixEst.prixM2.toLocaleString("fr-FR")} €/m²
+              </span>
+              <span className="text-[11px] text-text-secondary">
+                ({prixEst.min.toLocaleString("fr-FR")} – {prixEst.max.toLocaleString("fr-FR")} €/m²)
+              </span>
+            </div>
+            {prixEst.lastUpdate && (
+              <p className="text-[10px] text-text-secondary mt-1">
+                Dernière transaction : {prixEst.lastUpdate} · Source : DVF data.gouv.fr
+              </p>
+            )}
+            {data.surface && parseFloat(data.surface) > 0 && (
+              <div className="mt-2 pt-2 border-t border-accent/15 flex justify-between">
+                <span className="text-xs text-text-secondary">Estimation pour {data.surface} m²</span>
+                <span className="text-xs font-mono font-bold text-green">
+                  ~{Math.round(prixEst.prixM2 * parseFloat(data.surface)).toLocaleString("fr-FR")} €
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {estimError && (
+          <p className="text-[11px] text-red px-1">{estimError}</p>
+        )}
+      </div>
 
       {/* Type */}
       <div className="space-y-1.5">
@@ -229,6 +365,22 @@ function Step1({
 
 // ── Step 2 — Le crédit ────────────────────────────────────────
 
+function computeRemainingFromDate(
+  amount: number, rate: number, durationYears: number, startDate: string
+): { remaining: number; monthsElapsed: number; pct: number } | null {
+  if (!startDate) return null;
+  const [y, m] = startDate.split("-").map(Number);
+  if (!y || !m) return null;
+  const now = new Date();
+  const monthsElapsed = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
+  if (monthsElapsed <= 0) return null;
+  const totalMonths = durationYears * 12;
+  if (monthsElapsed >= totalMonths) return { remaining: 0, monthsElapsed: totalMonths, pct: 100 };
+  const remaining = calcRemainingCapital(amount, rate, durationYears, monthsElapsed / 12);
+  const pct = ((amount - remaining) / amount) * 100;
+  return { remaining, monthsElapsed, pct };
+}
+
 function Step2({
   data,
   update,
@@ -238,13 +390,18 @@ function Step2({
   update: (field: keyof FormData, value: string) => void;
   setHasLoan: (v: boolean) => void;
 }) {
+  const amount = parseFloat(data.loan_amount) || 0;
+  const rate = parseFloat(data.loan_rate) || 0;
+  const duration = parseFloat(data.loan_duration) || 0;
+
   const monthly =
-    data.has_loan && data.loan_amount && data.loan_rate && data.loan_duration
-      ? computeMonthlyPayment(
-          parseFloat(data.loan_amount),
-          parseFloat(data.loan_rate),
-          parseFloat(data.loan_duration)
-        )
+    data.has_loan && amount && rate && duration
+      ? computeMonthlyPayment(amount, rate, duration)
+      : null;
+
+  const repayment =
+    data.has_loan && amount && rate && duration && data.loan_start_date
+      ? computeRemainingFromDate(amount, rate, duration, data.loan_start_date)
       : null;
 
   return (
@@ -252,8 +409,7 @@ function Step2({
       <div className="flex gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl">
         <Info size={16} className="text-accent shrink-0 mt-0.5" />
         <p className="text-xs text-text-secondary leading-relaxed">
-          Si vous n&apos;avez pas de crédit (achat comptant), passez cette
-          étape.
+          Si vous n&apos;avez pas de crédit (achat comptant), passez cette étape.
         </p>
       </div>
 
@@ -290,16 +446,69 @@ function Step2({
         />
       </div>
 
-      {/* Live monthly payment preview */}
+      {/* Date de début — nouveau champ */}
+      <div className={`space-y-1.5 ${!data.has_loan ? "opacity-40" : ""}`}>
+        <label className="block text-xs font-medium text-text-secondary">
+          Date de début du crédit
+        </label>
+        <input
+          type="month"
+          value={data.loan_start_date}
+          onChange={(e) => update("loan_start_date", e.target.value)}
+          disabled={!data.has_loan}
+          max={new Date().toISOString().slice(0, 7)}
+          className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-sm text-text focus:outline-none focus:border-accent transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+        />
+        <p className="text-[11px] text-text-secondary">
+          Permet de calculer le capital restant dû exact.
+        </p>
+      </div>
+
+      {/* Live preview */}
       {monthly !== null && data.has_loan && (
-        <div className="bg-bg rounded-xl p-4 border border-border">
-          <p className="text-xs text-text-secondary mb-1">Mensualité estimée</p>
-          <p className="font-mono font-bold text-xl text-text">
-            {fmt(monthly)}{" "}
-            <span className="text-text-secondary text-sm font-normal">
-              €/mois
-            </span>
-          </p>
+        <div className="bg-bg rounded-xl p-4 border border-border space-y-3">
+          {/* Mensualité */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-text-secondary">Mensualité</p>
+            <p className="font-mono font-bold text-lg text-text">
+              {fmt(monthly)} <span className="text-text-secondary text-sm font-normal">€/mois</span>
+            </p>
+          </div>
+
+          {/* Jauge de remboursement dynamique */}
+          {repayment ? (
+            <>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-secondary">Capital remboursé</span>
+                <span className="font-mono font-semibold text-green">
+                  {fmt(amount - repayment.remaining)} €
+                  <span className="text-text-secondary font-normal"> / {fmt(amount)} €</span>
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="h-2.5 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${repayment.pct}%`,
+                      background: "linear-gradient(to right, #6C63FF, #00D9A6)",
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-text-secondary">
+                  <span>{repayment.pct.toFixed(1)} % remboursé</span>
+                  <span>Capital restant : <span className="font-mono font-semibold text-text">{fmt(repayment.remaining)} €</span></span>
+                </div>
+              </div>
+              <p className="text-[10px] text-text-secondary">
+                {repayment.monthsElapsed} mois écoulés sur {duration * 12}
+              </p>
+            </>
+          ) : amount > 0 && rate > 0 && duration > 0 ? (
+            <p className="text-[11px] text-text-secondary italic">
+              Renseignez la date de début pour voir le capital restant.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -533,7 +742,12 @@ export default function NouveauBienPage() {
       .insert({
         user_id: user.id,
         name: data.name.trim(),
-        address: data.address.trim() || null,
+        address: [
+          data.address_number.trim(),
+          data.address_street.trim(),
+          data.address_postal.trim(),
+          data.address_city.trim(),
+        ].filter(Boolean).join(" ") || null,
         type: data.type || "appartement",
         surface: parseFloat(data.surface) || null,
         purchase_price: purchasePrice,
@@ -558,11 +772,17 @@ export default function NouveauBienPage() {
       const loanAmount = parseFloat(data.loan_amount) || 0;
       const loanRate = parseFloat(data.loan_rate) || 0;
       const loanDuration = parseFloat(data.loan_duration) || 0;
-      const monthlyPayment = computeMonthlyPayment(
-        loanAmount,
-        loanRate,
-        loanDuration
-      );
+      const monthlyPayment = computeMonthlyPayment(loanAmount, loanRate, loanDuration);
+
+      // Compute actual remaining capital from start date
+      const startDateStr = data.loan_start_date
+        ? `${data.loan_start_date}-01`
+        : null;
+      let remainingCapital = loanAmount;
+      if (data.loan_start_date && loanRate > 0 && loanDuration > 0) {
+        const repayment = computeRemainingFromDate(loanAmount, loanRate, loanDuration, data.loan_start_date);
+        if (repayment) remainingCapital = repayment.remaining;
+      }
 
       await supabase.from("loans").insert({
         property_id: propertyId,
@@ -570,8 +790,8 @@ export default function NouveauBienPage() {
         rate: loanRate,
         duration_years: loanDuration,
         monthly_payment: Math.round(monthlyPayment),
-        start_date: null,
-        remaining_capital: loanAmount,
+        start_date: startDateStr,
+        remaining_capital: Math.round(remainingCapital),
       });
     }
 

@@ -10,6 +10,7 @@ import {
   Building,
   Plus,
   ChevronRight,
+  TrendingUp,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { computeNetCashflow, computeScoreDetails } from "@/lib/calculations";
@@ -106,12 +107,28 @@ function EmptyState() {
   );
 }
 
-function PropertyCard({ card }: { card: PropertyCard }) {
+function PropertyCard({
+  card,
+  marketPrixM2,
+}: {
+  card: PropertyCard;
+  marketPrixM2?: number | null;
+}) {
   const { property, revenue, cashflow, score } = card;
   const Icon = TYPE_ICONS[property.type] ?? Building2;
   const style = scoreStyle(score);
   const cfPositive = cashflow >= 0;
   const monthlyRent = revenue?.monthly_rent ?? 0;
+
+  const propM2 =
+    property.surface && property.surface > 0
+      ? property.current_value / property.surface
+      : null;
+
+  const delta =
+    marketPrixM2 && propM2
+      ? ((propM2 - marketPrixM2) / marketPrixM2) * 100
+      : null;
 
   return (
     <Link href={`/biens/${property.id}`}>
@@ -172,6 +189,35 @@ function PropertyCard({ card }: { card: PropertyCard }) {
               </p>
             </div>
           </div>
+
+          {/* Market price row */}
+          {marketPrixM2 && (
+            <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[10px] text-text-secondary">
+                <TrendingUp size={11} className="text-accent" />
+                <span>Marché local</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] font-bold text-text">
+                  {Math.round(marketPrixM2).toLocaleString("fr-FR")} €/m²
+                </span>
+                {delta !== null && (
+                  <span
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                      delta > 5
+                        ? "bg-green/10 text-green"
+                        : delta < -5
+                        ? "bg-accent/10 text-accent"
+                        : "bg-border text-text-secondary"
+                    }`}
+                  >
+                    {delta > 0 ? "+" : ""}
+                    {delta.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-4 pb-3 flex justify-end">
@@ -200,6 +246,7 @@ function AddPropertyCard() {
 export default function BiensPage() {
   const [cards, setCards] = useState<PropertyCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [prixM2Map, setPrixM2Map] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function load() {
@@ -250,6 +297,34 @@ export default function BiensPage() {
 
       setCards(result);
       setLoading(false);
+
+      // Fetch market prices in background for properties with addresses
+      const withAddress = result.filter(
+        (c) => c.property.address && c.property.address.length > 5
+      );
+      if (withAddress.length === 0) return;
+
+      const fetches = withAddress.map(async (c) => {
+        try {
+          const res = await fetch(
+            `/api/prix-m2?address=${encodeURIComponent(c.property.address!)}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            return { id: c.property.id, prixM2: data.prixM2 as number };
+          }
+        } catch {
+          // silently skip
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetches);
+      const map: Record<string, number> = {};
+      results.forEach((r) => {
+        if (r) map[r.id] = r.prixM2;
+      });
+      setPrixM2Map(map);
     }
 
     load();
@@ -299,7 +374,11 @@ export default function BiensPage() {
       ) : (
         <div className="space-y-3">
           {cards.map((card) => (
-            <PropertyCard key={card.property.id} card={card} />
+            <PropertyCard
+              key={card.property.id}
+              card={card}
+              marketPrixM2={prixM2Map[card.property.id] ?? null}
+            />
           ))}
           <AddPropertyCard />
         </div>

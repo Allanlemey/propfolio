@@ -138,6 +138,7 @@ export default function AuthPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("login");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPw, setShowPw] = useState(false);
 
@@ -150,6 +151,18 @@ export default function AuthPage() {
   const [regEmail, setRegEmail] = useState("");
   const [regPw, setRegPw] = useState("");
   const [regime, setRegime] = useState<Regime | "">("");
+
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    setError("");
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    // Browser will redirect — no need to setGoogleLoading(false)
+  }
 
   function switchTab(t: Tab) {
     setTab(t);
@@ -268,14 +281,18 @@ export default function AuthPage() {
           ))}
         </div>
 
-        {/* Google (disabled) */}
+        {/* Google */}
         <button
           type="button"
-          disabled
-          title="Bientôt disponible"
-          className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-border text-sm font-medium text-text-secondary opacity-40 cursor-not-allowed mb-5"
+          onClick={handleGoogle}
+          disabled={googleLoading}
+          className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-border text-sm font-medium text-text hover:bg-card transition-colors mb-5 disabled:opacity-60"
         >
-          <GoogleLogo />
+          {googleLoading ? (
+            <Loader2 size={18} className="animate-spin shrink-0" />
+          ) : (
+            <GoogleLogo />
+          )}
           Continuer avec Google
         </button>
 
