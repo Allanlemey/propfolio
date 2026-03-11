@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUserTmi } from "@/hooks/use-user-tmi";
 import Link from "next/link";
 import {
   Bell,
@@ -378,6 +379,7 @@ const FILTERS: { label: string; value: AlertCategory | "all" }[] = [
 // ── Page ─────────────────────────────────────────────────────
 
 export default function AlertesPage() {
+  const tmi = useUserTmi();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<AlertCategory | "all">("all");
@@ -431,7 +433,8 @@ export default function AlertesPage() {
             p as Property,
             loan,
             propCharges,
-            revenue
+            revenue,
+            tmi
           ),
         };
       });
@@ -441,7 +444,7 @@ export default function AlertesPage() {
     }
 
     load();
-  }, []);
+  }, [tmi]);
 
   if (loading) return <LoadingSkeleton />;
 

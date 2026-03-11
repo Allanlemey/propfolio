@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Check, TrendingUp, AlertTriangle, BookOpen, Trash2, ChevronRight } from "lucide-react";
+import { useUserTmi } from "@/hooks/use-user-tmi";
+import { Loader2, Check, TrendingUp, AlertTriangle, BookOpen, Trash2, ChevronRight, ExternalLink, Plus, Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   calcMonthlyPayment,
@@ -224,7 +225,7 @@ type SavedSim = {
   params: {
     price: number; apport: number; taux: number; duree: number;
     loyer: number; regime: string; revaluation: number;
-    vacance: number; inflationLoyers: number;
+    vacance: number; inflationLoyers: number; listingUrl?: string;
   };
   results: {
     cashflow: number; rendementBrut: number; rendementNet: number;
@@ -306,6 +307,17 @@ function SimList({
                   <ChevronRight size={11} />
                   {isActive ? "Chargée" : "Charger"}
                 </button>
+                {s.params.listingUrl && (
+                  <a
+                    href={s.params.listingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-7 h-7 rounded-lg bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-accent hover:border-accent/30 transition-colors"
+                    title="Voir l'annonce"
+                  >
+                    <ExternalLink size={11} />
+                  </a>
+                )}
                 <button
                   onClick={async () => {
                     setDeletingId(s.id);
@@ -333,6 +345,8 @@ function SimList({
 const REGIMES = ["LMNP micro-BIC", "LMNP réel", "Nu micro-foncier", "Nu réel"];
 
 export default function SimulationPage() {
+  const tmi = useUserTmi();
+
   // Inputs
   const [price, setPrice] = useState(120000);
   const [apport, setApport] = useState(10000);
@@ -345,6 +359,12 @@ export default function SimulationPage() {
   const [revaluation, setRevaluation] = useState(2);
   const [vacance, setVacance] = useState(4);
   const [inflationLoyers, setInflationLoyers] = useState(1.8);
+
+  // Listing URL
+  const [listingUrl, setListingUrl] = useState("");
+
+  // Simulation name
+  const [simName, setSimName] = useState("");
 
   // Saved simulations
   const [savedSims, setSavedSims] = useState<SavedSim[]>([]);
@@ -375,6 +395,8 @@ export default function SimulationPage() {
     setRevaluation(s.params.revaluation ?? 2);
     setVacance(s.params.vacance ?? 4);
     setInflationLoyers(s.params.inflationLoyers ?? 1.8);
+    setListingUrl(s.params.listingUrl ?? "");
+    setSimName(s.name);
     setActiveSimId(s.id);
     simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -411,7 +433,8 @@ export default function SimulationPage() {
     annualRent,
     annualCharges,
     annualInterest,
-    amortissement
+    amortissement,
+    tmi
   );
 
   const provisionVacance = loyer * (vacance / 100);
@@ -430,21 +453,25 @@ export default function SimulationPage() {
 
   const cfPositive = cashflow >= 0;
 
+  function resetForm() {
+    setPrice(120000); setApport(10000); setTaux(3.8); setDuree(20);
+    setLoyer(650); setRegime("LMNP micro-BIC"); setRevaluation(2);
+    setVacance(4); setInflationLoyers(1.8); setListingUrl(""); setSimName("");
+    setActiveSimId(null);
+    simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   // ── Save ─────────────────────────────────────────────────────
 
   async function handleSave() {
     setSaving(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setSaving(false);
-      return;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); return; }
 
-    await supabase.from("simulations").insert({
-      user_id: user.id,
-      name: `Simulation ${fmtK(price)} — ${loyer} €/mois`,
+    const resolvedName = simName.trim() || `Simulation ${fmtK(price)} — ${loyer} €/mois`;
+
+    const payload = {
+      name: resolvedName,
       params: {
         price,
         apport: effectiveApport,
@@ -455,6 +482,7 @@ export default function SimulationPage() {
         revaluation,
         vacance,
         inflationLoyers,
+        listingUrl: listingUrl.trim() || undefined,
       },
       results: {
         cashflow: Math.round(cashflow),
@@ -465,7 +493,14 @@ export default function SimulationPage() {
         patrimoineAujourdhui: Math.round(projection[0].net),
         patrimoine10ans: Math.round(projection[10].net),
       },
-    });
+    };
+
+    if (activeSimId) {
+      await supabase.from("simulations").update(payload).eq("id", activeSimId);
+    } else {
+      const { data: inserted } = await supabase.from("simulations").insert({ user_id: user.id, ...payload }).select("id").single();
+      if (inserted) setActiveSimId(inserted.id);
+    }
 
     // Refresh saved list
     const { data: { user: u } } = await supabase.auth.getUser();
@@ -552,6 +587,24 @@ export default function SimulationPage() {
           onChange={setLoyer}
           fv={(v) => `${v} €/mois`}
         />
+
+        {/* URL annonce */}
+        <div className="space-y-2">
+          <label className="text-sm text-text-secondary" htmlFor="listing-url">
+            URL de l&apos;annonce <span className="text-text-muted text-xs">(optionnel)</span>
+          </label>
+          <div className="relative">
+            <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <input
+              id="listing-url"
+              type="url"
+              value={listingUrl}
+              onChange={(e) => setListingUrl(e.target.value)}
+              placeholder="https://www.leboncoin.fr/..."
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-colors"
+            />
+          </div>
+        </div>
 
         {/* Régime fiscal */}
         <div className="space-y-2">
@@ -717,32 +770,64 @@ export default function SimulationPage() {
           className="text-[#FBBF24] shrink-0 mt-0.5"
         />
         <p className="text-xs text-text-secondary leading-relaxed">
-          Les calculs fiscaux sont indicatifs (TMI 30 % par défaut). Consultez
+          Les calculs fiscaux sont indicatifs (TMI {Math.round(tmi * 100)} % — modifiable dans votre profil). Consultez
           un expert-comptable pour votre situation personnelle.
         </p>
       </div>
 
       {/* Save */}
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving || saved}
-        className="w-full py-4 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.98] transition-all"
-        style={{
-          background: saved
-            ? "var(--green)"
-            : "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)",
-        }}
-      >
-        {saving ? (
-          <Loader2 size={15} className="animate-spin" />
-        ) : saved ? (
-          <Check size={15} />
-        ) : (
-          <TrendingUp size={15} />
-        )}
-        {saved ? "Simulation sauvegardée !" : "Sauvegarder cette simulation"}
-      </button>
+      <div className="space-y-3">
+        {/* Nom de la simulation */}
+        <div className="relative">
+          <Pencil size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          <input
+            type="text"
+            value={simName}
+            onChange={(e) => setSimName(e.target.value)}
+            placeholder={`Simulation ${fmtK(price)} — ${loyer} €/mois`}
+            className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-card border border-border text-sm text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-colors"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          {activeSimId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-4 py-3.5 rounded-xl text-sm font-semibold border border-border text-text-secondary hover:text-text hover:border-accent/40 flex items-center gap-2 transition-colors"
+            >
+              <Plus size={14} />
+              Nouvelle
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || saved}
+            className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.98] transition-all"
+            style={{
+              background: saved
+                ? "var(--green)"
+                : "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)",
+            }}
+          >
+            {saving ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : saved ? (
+              <Check size={15} />
+            ) : activeSimId ? (
+              <Pencil size={15} />
+            ) : (
+              <TrendingUp size={15} />
+            )}
+            {saved
+              ? "Mise à jour sauvegardée !"
+              : activeSimId
+              ? "Mettre à jour la simulation"
+              : "Sauvegarder cette simulation"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

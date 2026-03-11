@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUserTmi } from "@/hooks/use-user-tmi";
 import Link from "next/link";
 import {
   Building2, Home, Store, Warehouse, Building, Plus,
@@ -400,7 +401,7 @@ function KpiSheet({
                 const { taxeFonciere, copro, pno, gli, travaux } = getChargeAmounts(e.charges);
                 const annualRent = (e.revenue?.monthly_rent ?? 0) * 12;
                 const opex = taxeFonciere + copro + pno + gli + travaux;
-                const tax = computeMonthlyTax(e.property.regime, annualRent, opex, e.loan, e.property.purchase_price) * 12;
+                const tax = computeMonthlyTax(e.property.regime, annualRent, opex, e.loan, e.property.purchase_price, tmi) * 12;
                 const netOp = annualRent - opex - tax;
                 const rend = e.property.purchase_price > 0 ? (netOp / e.property.purchase_price) * 100 : 0;
                 const color = rend >= 6 ? "#00D9A6" : rend >= 4 ? "#FBBF24" : "#FF6B6B";
@@ -545,6 +546,7 @@ function PropertyRow({ entry }: { entry: Entry }) {
 // ── Page ─────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const tmi = useUserTmi();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeBar, setActiveBar] = useState<number | null>(null);
@@ -570,14 +572,14 @@ export default function DashboardPage() {
         const revenue = (revenues?.find(r => r.property_id === p.id) as DashRevenue) ?? null;
         return {
           property: p as Property, loan, charges: propCharges, revenue,
-          cashflow: computeNetCashflow(p as Property, loan, propCharges, revenue),
-          score: computeScoreDetails(p as Property, loan, propCharges, revenue).global,
+          cashflow: computeNetCashflow(p as Property, loan, propCharges, revenue, tmi),
+          score: computeScoreDetails(p as Property, loan, propCharges, revenue, tmi).global,
         };
       }));
       setLoading(false);
     }
     load();
-  }, []);
+  }, [tmi]);
 
   if (loading) return <LoadingSkeleton />;
 
@@ -590,7 +592,7 @@ export default function DashboardPage() {
     const { taxeFonciere, copro, pno, gli, travaux } = getChargeAmounts(e.charges);
     const annualRent = (e.revenue?.monthly_rent ?? 0) * 12;
     const opex = taxeFonciere + copro + pno + gli + travaux;
-    const tax = computeMonthlyTax(e.property.regime, annualRent, opex, e.loan, e.property.purchase_price) * 12;
+    const tax = computeMonthlyTax(e.property.regime, annualRent, opex, e.loan, e.property.purchase_price, tmi) * 12;
     return s + annualRent - opex - tax;
   }, 0);
 

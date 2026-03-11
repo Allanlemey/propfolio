@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Building2,
   Calculator,
-  Bell,
   CircleUser,
 } from "lucide-react";
 
@@ -14,7 +13,6 @@ const TABS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Mes biens", href: "/biens", icon: Building2 },
   { label: "Simuler", href: "/simulation", icon: Calculator },
-  { label: "Alertes", href: "/alertes", icon: Bell },
   { label: "Profil", href: "/profil", icon: CircleUser },
 ];
 

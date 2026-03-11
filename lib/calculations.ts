@@ -84,9 +84,10 @@ export function calcMonthlyTax(
   annualRent: number,
   annualCharges: number,
   annualInterest: number,
-  amortissement: number
+  amortissement: number,
+  tmi = 0.3
 ): number {
-  const TMI = 0.3;
+  const TMI = tmi;
   const PS = 0.172;
   switch (regime) {
     case "LMNP micro-BIC":
@@ -115,7 +116,8 @@ export function computeMonthlyTax(
   annualRent: number,
   annualChargesTotal: number,
   loan: Loan | null,
-  purchasePrice: number
+  purchasePrice: number,
+  tmi = 0.3
 ): number {
   const annualInterest =
     loan?.remaining_capital != null && loan?.rate != null
@@ -127,7 +129,8 @@ export function computeMonthlyTax(
     annualRent,
     annualChargesTotal,
     annualInterest,
-    amortissement
+    amortissement,
+    tmi
   );
 }
 
@@ -137,7 +140,8 @@ export function computeCashflowLines(
   property: Property,
   loan: Loan | null,
   charges: Charge[],
-  revenue: Revenue | null
+  revenue: Revenue | null,
+  tmi = 0.3
 ): { lines: CashflowLine[]; total: number } {
   const monthlyRent = revenue?.monthly_rent ?? 0;
   const { taxeFonciere, copro, pno, gli, travaux } = getChargeAmounts(charges);
@@ -148,7 +152,8 @@ export function computeCashflowLines(
     annualRent,
     annualChargesTotal,
     loan,
-    property.purchase_price
+    property.purchase_price,
+    tmi
   );
   const provisionVacance = monthlyRent * 0.04;
   const monthlyPayment = loan?.monthly_payment ?? 0;
@@ -220,9 +225,10 @@ export function computeNetCashflow(
   property: Property,
   loan: Loan | null,
   charges: Charge[],
-  revenue: Revenue | null
+  revenue: Revenue | null,
+  tmi = 0.3
 ): number {
-  return computeCashflowLines(property, loan, charges, revenue).total;
+  return computeCashflowLines(property, loan, charges, revenue, tmi).total;
 }
 
 // ── Score ──────────────────────────────────────────────────────
@@ -231,7 +237,8 @@ export function computeScoreDetails(
   property: Property,
   loan: Loan | null,
   charges: Charge[],
-  revenue: Revenue | null
+  revenue: Revenue | null,
+  tmi = 0.3
 ): ScoreDetail {
   const monthlyRent = revenue?.monthly_rent ?? 0;
   const { taxeFonciere, copro, pno, gli, travaux } = getChargeAmounts(charges);
@@ -247,7 +254,7 @@ export function computeScoreDetails(
       ? ((monthlyRent * 12 - annualCharges) / property.purchase_price) * 100
       : 0;
 
-  const cashflowNet = computeNetCashflow(property, loan, charges, revenue);
+  const cashflowNet = computeNetCashflow(property, loan, charges, revenue, tmi);
 
   const plusValuePct =
     property.purchase_price > 0
