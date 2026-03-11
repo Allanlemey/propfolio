@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUserTmi } from "@/hooks/use-user-tmi";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Info, Pencil, Trash2, X, Check, ChevronDown, TrendingUp, Loader2 } from "lucide-react";
@@ -421,9 +422,11 @@ function TabOverview({
 function TabCashflow({
   lines,
   total,
+  tmi,
 }: {
   lines: CashflowLine[];
   total: number;
+  tmi: number;
 }) {
   const positive = total >= 0;
 
@@ -505,7 +508,7 @@ function TabCashflow({
       </div>
 
       <p className="text-[11px] text-text-secondary text-center px-2 leading-relaxed">
-        Calculs indicatifs (TMI 30 % par défaut). Consultez un expert-comptable.
+        Calculs indicatifs (TMI {Math.round(tmi * 100)} % — modifiable dans votre profil). Consultez un expert-comptable.
       </p>
     </div>
   );
@@ -1102,6 +1105,7 @@ export default function BienDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const tmi = useUserTmi();
 
   const [property, setProperty] = useState<Property | null>(null);
   const [loan, setLoan] = useState<Loan | null>(null);
@@ -1330,12 +1334,13 @@ export default function BienDetailPage() {
     );
   }
 
-  const scores = computeScoreDetails(property, loan, charges, revenue);
+  const scores = computeScoreDetails(property, loan, charges, revenue, tmi);
   const { lines, total: cashflowTotal } = computeCashflowLines(
     property,
     loan,
     charges,
-    revenue
+    revenue,
+    tmi
   );
   const cfPositive = cashflowTotal >= 0;
   const { text: scoreTextClass, bg: scoreBgClass } = scoreStyle(scores.global);
@@ -1494,7 +1499,7 @@ export default function BienDetailPage() {
             marketLoading={marketLoading}
           />
         )}
-        {tab === 1 && <TabCashflow lines={lines} total={cashflowTotal} />}
+        {tab === 1 && <TabCashflow lines={lines} total={cashflowTotal} tmi={tmi} />}
         {tab === 2 && <TabScore scores={scores} />}
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUserTmi } from "@/hooks/use-user-tmi";
 import Link from "next/link";
 import {
   Building2,
@@ -244,6 +245,7 @@ function AddPropertyCard() {
 // ── Page ─────────────────────────────────────────────────────
 
 export default function BiensPage() {
+  const tmi = useUserTmi();
   const [cards, setCards] = useState<PropertyCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [prixM2Map, setPrixM2Map] = useState<Record<string, number>>({});
@@ -290,8 +292,8 @@ export default function BiensPage() {
           loan,
           charges: propCharges,
           revenue,
-          cashflow: computeNetCashflow(p as Property, loan, propCharges as Charge[], revenue),
-          score: computeScoreDetails(p as Property, loan, propCharges as Charge[], revenue).global,
+          cashflow: computeNetCashflow(p as Property, loan, propCharges as Charge[], revenue, tmi),
+          score: computeScoreDetails(p as Property, loan, propCharges as Charge[], revenue, tmi).global,
         };
       });
 
@@ -328,7 +330,7 @@ export default function BiensPage() {
     }
 
     load();
-  }, []);
+  }, [tmi]);
 
   const totalPatrimoine = cards.reduce(
     (sum, c) => sum + c.property.current_value,
