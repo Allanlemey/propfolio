@@ -30,6 +30,7 @@ create table public.properties (
   current_value  numeric(12,2),
   photo_url      text,
   regime         text,          -- 'nu', 'meublé', 'LMNP', 'SCI', …
+  dpe            text,          -- 'A', 'B', 'C', 'D', 'E', 'F', 'G'
   created_at     timestamptz not null default now()
 );
 

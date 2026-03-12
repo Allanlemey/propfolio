@@ -38,6 +38,7 @@ interface FormData {
   purchase_price: string;
   current_value: string;
   purchase_date: string;
+  dpe: string;
   // Step 2
   has_loan: boolean;
   loan_amount: string;
@@ -65,6 +66,7 @@ const INITIAL: FormData = {
   purchase_price: "",
   current_value: "",
   purchase_date: "",
+  dpe: "",
   has_loan: true,
   loan_amount: "",
   loan_rate: "",
@@ -89,6 +91,12 @@ const PROPERTY_TYPES = [
 ];
 
 const REGIMES = ["LMNP micro-BIC", "LMNP réel", "Nu micro-foncier", "Nu réel"];
+
+const DPE_LETTERS = ["A", "B", "C", "D", "E", "F", "G"] as const;
+const DPE_COLORS: Record<string, string> = {
+  A: "#319834", B: "#33CC33", C: "#CBFC01",
+  D: "#FFFF00", E: "#FFCC00", F: "#FF6600", G: "#FF0000",
+};
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -319,6 +327,35 @@ function Step1({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* DPE */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-text-secondary">Classe énergie (DPE)</p>
+        <div className="flex gap-1.5">
+          {DPE_LETTERS.map(letter => {
+            const selected = data.dpe === letter;
+            const color = DPE_COLORS[letter];
+            return (
+              <button
+                key={letter}
+                type="button"
+                onClick={() => update("dpe", data.dpe === letter ? "" : letter)}
+                className="flex-1 py-2 rounded-lg text-sm font-bold transition-all border"
+                style={{
+                  background: selected ? color : "transparent",
+                  borderColor: selected ? color : "var(--border)",
+                  color: selected ? (letter <= "C" ? "#000" : "#000") : "var(--text-secondary)",
+                  opacity: selected ? 1 : 0.6,
+                  boxShadow: selected ? `0 2px 8px ${color}55` : "none",
+                }}
+              >
+                {letter}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-text-secondary">Optionnel — visible sur la fiche du bien</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -754,6 +791,7 @@ export default function NouveauBienPage() {
         purchase_date: data.purchase_date.trim() ? parseFrenchDate(data.purchase_date) : null,
         current_value: currentValue,
         regime: data.regime || null,
+        dpe: data.dpe || null,
       })
       .select("id")
       .single();

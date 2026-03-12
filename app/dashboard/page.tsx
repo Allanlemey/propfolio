@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useUserTmi } from "@/hooks/use-user-tmi";
 import Link from "next/link";
 import {
   Building2, Home, Store, Warehouse, Building, Plus,
   ChevronRight, TrendingUp, X, TrendingDown, Percent,
-  CalendarRange, Wallet,
+  CalendarRange, Wallet, Landmark, ArrowUpRight,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -76,29 +76,103 @@ function LoadingSkeleton() {
 
 // ── KPI Card ─────────────────────────────────────────────────
 
+type KpiColor = "accent" | "green" | "yellow" | "red";
+
+const KPI_COLORS: Record<KpiColor, { main: string; glow: string; bg: string; border: string; grad1: string; grad2: string }> = {
+  accent:  { main: "#6C63FF", glow: "rgba(108,99,255,0.25)", bg: "rgba(108,99,255,0.08)", border: "rgba(108,99,255,0.25)", grad1: "#6C63FF", grad2: "#8B83FF" },
+  green:   { main: "#00D9A6", glow: "rgba(0,217,166,0.25)",  bg: "rgba(0,217,166,0.08)",  border: "rgba(0,217,166,0.25)",  grad1: "#00D9A6", grad2: "#00F0BB" },
+  yellow:  { main: "#FBBF24", glow: "rgba(251,191,36,0.25)", bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.25)", grad1: "#FBBF24", grad2: "#FCD34D" },
+  red:     { main: "#FF6B6B", glow: "rgba(255,107,107,0.25)",bg: "rgba(255,107,107,0.08)",border: "rgba(255,107,107,0.25)",grad1: "#FF6B6B", grad2: "#FF8787" },
+};
+
+function MiniSparkline({ data, color }: { data: number[]; color: string }) {
+  const w = 56;
+  const h = 22;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * w,
+    y: h - ((v - min) / range) * (h - 4) - 2,
+  }));
+
+  let path = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const cp = (pts[i + 1].x - pts[i].x) * 0.35;
+    path += ` C${pts[i].x + cp},${pts[i].y} ${pts[i + 1].x - cp},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
+  }
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" style={{ opacity: 0.7 }}>
+      <path d={path} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r={2} fill={color} />
+    </svg>
+  );
+}
+
 function KpiCard({
   label, value, unit, sub, positive, onClick, active,
+  icon: Icon, color = "accent", sparkData, negative,
 }: {
   label: string; value: string; unit: string; sub: string;
-  positive?: boolean; onClick: () => void; active?: boolean;
+  positive?: boolean; negative?: boolean; onClick: () => void; active?: boolean;
+  icon: React.ElementType; color?: KpiColor; sparkData?: number[];
 }) {
+  const c = KPI_COLORS[negative ? "red" : color];
+  const valueColor = negative ? "text-red" : positive ? "text-green" : "text-text";
+
   return (
     <button
       onClick={onClick}
-      className={`bg-card rounded-2xl p-4 border text-left flex flex-col gap-1 w-full transition-all active:scale-[0.97] ${
-        active ? "border-accent/60 shadow-[0_0_0_1px_rgba(108,99,255,0.3)]" : "border-border hover:border-accent/30"
+      className={`relative overflow-hidden bg-card rounded-2xl p-4 text-left flex flex-col gap-1.5 w-full transition-all duration-200 active:scale-[0.97] border ${
+        active
+          ? "shadow-[0_0_16px_rgba(108,99,255,0.2)]"
+          : "hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
       }`}
+      style={{
+        borderColor: active ? c.main : undefined,
+      }}
     >
+      {/* Gradient top bar */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[3px]"
+        style={{
+          background: `linear-gradient(90deg, ${c.grad1}, ${c.grad2})`,
+          opacity: active ? 1 : 0.5,
+          transition: "opacity 0.2s ease",
+        }}
+      />
+
+      {/* Header: icon + label + chevron */}
       <div className="flex items-center justify-between">
-        <span className="text-text-secondary text-[10px] font-semibold tracking-wider uppercase">{label}</span>
-        <ChevronRight size={12} className={`transition-colors ${active ? "text-accent" : "text-border"}`} />
+        <div className="flex items-center gap-1.5">
+          <div
+            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+            style={{ background: c.bg, border: `1px solid ${c.border}` }}
+          >
+            <Icon size={10} style={{ color: c.main }} strokeWidth={2.2} />
+          </div>
+          <span className="text-text-secondary text-[10px] font-semibold tracking-wider uppercase">{label}</span>
+        </div>
+        <ChevronRight size={11} className={`transition-colors ${active ? "text-accent" : "text-border"}`} />
       </div>
-      <div className="flex items-baseline gap-1 mt-0.5">
-        <span className={`font-mono font-bold text-[1.5rem] leading-tight ${positive ? "text-green" : "text-text"}`}>
-          {value}
-        </span>
-        <span className={`font-mono text-sm ${positive ? "text-green" : "text-text-secondary"}`}>{unit}</span>
+
+      {/* Value row + sparkline */}
+      <div className="flex items-end justify-between gap-2">
+        <div className="flex items-baseline gap-1 min-w-0">
+          <span className={`font-mono font-bold text-[1.45rem] leading-none tracking-tight ${valueColor}`}>
+            {value}
+          </span>
+          <span className={`font-mono text-[11px] font-medium ${
+            negative ? "text-red/70" : positive ? "text-green/70" : "text-text-secondary"
+          }`}>
+            {unit}
+          </span>
+        </div>
+        {sparkData && <MiniSparkline data={sparkData} color={c.main} />}
       </div>
+
+      {/* Subtitle */}
       <span className="text-text-secondary text-[10px] leading-tight">{sub}</span>
     </button>
   );
@@ -106,43 +180,103 @@ function KpiCard({
 
 // ── Chart ─────────────────────────────────────────────────────
 
-function PatrimoineChart({
-  patrimoine, activeBar, onBarClick,
-}: {
-  patrimoine: number; activeBar: number | null; onBarClick: (i: number | null) => void;
-}) {
+type RangeKey = "6M" | "1A" | "2A" | "5A";
+const RANGE_MONTHS: Record<RangeKey, number> = { "6M": 6, "1A": 12, "2A": 24, "5A": 60 };
+const RANGE_GROWTH: Record<RangeKey, number> = { "6M": 1.012, "1A": 1.015, "2A": 1.014, "5A": 1.013 };
+
+function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
+  const [range, setRange] = useState<RangeKey>("1A");
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const months = RANGE_MONTHS[range];
+  const growth = RANGE_GROWTH[range];
   const now = new Date();
-  const chartData = Array.from({ length: 12 }, (_, i) => ({
-    month: MONTHS_FR[new Date(now.getFullYear(), now.getMonth() - (11 - i), 1).getMonth()],
-    year: new Date(now.getFullYear(), now.getMonth() - (11 - i), 1).getFullYear(),
-    value: patrimoine / Math.pow(1.015, 11 - i),
-  }));
 
-  const growthPct = chartData[0].value > 0
-    ? ((chartData[11].value - chartData[0].value) / chartData[0].value) * 100 : 0;
+  const chartData = Array.from({ length: months }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+    return {
+      label: months <= 12
+        ? MONTHS_FR[d.getMonth()]
+        : `${MONTHS_FR[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`,
+      shortLabel: MONTHS_FR[d.getMonth()],
+      year: d.getFullYear(),
+      value: patrimoine / Math.pow(growth, months - 1 - i),
+    };
+  });
 
-  const W = 560; const H = 150;
-  const PAD = { top: 14, right: 8, bottom: 30, left: 46 };
-  const values = chartData.map(d => d.value);
-  const minVal = Math.min(...values) * 0.96;
-  const maxVal = Math.max(...values) * 1.01;
-  const range = maxVal - minVal || 1;
-  const plotH = H - PAD.top - PAD.bottom;
+  const first = chartData[0].value;
+  const last = chartData[chartData.length - 1].value;
+  const growthPct = first > 0 ? ((last - first) / first) * 100 : 0;
+
+  // SVG dimensions
+  const W = 580;
+  const H = 200;
+  const PAD = { top: 24, right: 12, bottom: 32, left: 50 };
   const plotW = W - PAD.left - PAD.right;
-  const gap = plotW / values.length;
-  const barW = gap * 0.52;
-  const barY = (v: number) => PAD.top + plotH - ((v - minVal) / range) * plotH;
-  const barH = (v: number) => Math.max(2, ((v - minVal) / range) * plotH);
+  const plotH = H - PAD.top - PAD.bottom;
+
+  const values = chartData.map(d => d.value);
+  const minVal = Math.min(...values) * 0.97;
+  const maxVal = Math.max(...values) * 1.02;
+  const valRange = maxVal - minVal || 1;
+
+  const xOf = (i: number) => PAD.left + (i / (chartData.length - 1)) * plotW;
+  const yOf = (v: number) => PAD.top + plotH - ((v - minVal) / valRange) * plotH;
+
+  // Smooth bezier path
+  const points = chartData.map((d, i) => ({ x: xOf(i), y: yOf(d.value) }));
+
+  function bezierPath(pts: { x: number; y: number }[]): string {
+    if (pts.length < 2) return "";
+    let path = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const cp = (pts[i + 1].x - pts[i].x) * 0.35;
+      path += ` C${pts[i].x + cp},${pts[i].y} ${pts[i + 1].x - cp},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
+    }
+    return path;
+  }
+
+  const linePath = bezierPath(points);
+  const areaPath = `${linePath} L${points[points.length - 1].x},${PAD.top + plotH} L${points[0].x},${PAD.top + plotH} Z`;
+
+  // X-axis labels: show a subset to avoid clutter
+  const labelStep = months <= 12 ? 1 : months <= 24 ? 2 : 6;
+  const xLabels = chartData
+    .map((d, i) => ({ ...d, i }))
+    .filter((_, i) => i % labelStep === 0 || i === chartData.length - 1);
+
+  // Hover handler
+  const onMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * W;
+    // Find nearest point
+    let nearest = 0;
+    let nearestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const dist = Math.abs(points[i].x - mx);
+      if (dist < nearestDist) { nearestDist = dist; nearest = i; }
+    }
+    setHoverIdx(nearest);
+  }, [points]);
+
+  const hoverPoint = hoverIdx !== null ? chartData[hoverIdx] : null;
+  const hoverDelta = hoverIdx !== null && hoverIdx > 0
+    ? ((chartData[hoverIdx].value - chartData[hoverIdx - 1].value) / chartData[hoverIdx - 1].value) * 100
+    : null;
 
   return (
     <div className="bg-card rounded-2xl p-4 border border-border">
-      <div className="flex items-start justify-between mb-1">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-text">Évolution patrimoine net</p>
-          <p className="text-[11px] text-text-secondary">
-            {activeBar !== null
-              ? `${chartData[activeBar].month} ${chartData[activeBar].year} — ${fmtK(chartData[activeBar].value)}`
-              : "12 derniers mois — cliquez une barre"}
+          <p className="text-[11px] text-text-secondary mt-0.5">
+            {hoverPoint
+              ? `${hoverPoint.label} ${months > 12 ? "" : hoverPoint.year} — ${fmtK(hoverPoint.value)}`
+              : "Survolez le graphique"}
           </p>
         </div>
         <div className="flex items-center gap-1 bg-green/10 text-green text-[11px] font-semibold px-2.5 py-1 rounded-full border border-green/20">
@@ -151,104 +285,153 @@ function PatrimoineChart({
         </div>
       </div>
 
+      {/* Range selector */}
+      <div className="flex items-center gap-1 mb-3">
+        {(["6M", "1A", "2A", "5A"] as RangeKey[]).map(r => (
+          <button
+            key={r}
+            onClick={() => { setRange(r); setHoverIdx(null); }}
+            className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all duration-200 ${
+              range === r
+                ? "bg-accent text-white shadow-[0_2px_8px_rgba(108,99,255,0.35)]"
+                : "bg-bg text-text-secondary hover:text-text border border-border hover:border-accent/30"
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+
+      {/* Chart */}
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
-        style={{ height: 180 }}
-        aria-label="Évolution patrimoine net sur 12 mois"
+        style={{ height: 200 }}
+        aria-label={`Évolution patrimoine net sur ${months} mois`}
+        onMouseMove={onMouseMove}
+        onMouseLeave={() => setHoverIdx(null)}
       >
         <defs>
-          <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6C63FF" stopOpacity={0.35} />
+            <stop offset="85%" stopColor="#6C63FF" stopOpacity={0.02} />
+            <stop offset="100%" stopColor="#6C63FF" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#6C63FF" />
             <stop offset="100%" stopColor="#00D9A6" />
           </linearGradient>
+          <filter id="lineGlow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
 
         {/* Grid lines */}
-        {[0, 0.33, 0.67, 1].map((t, i) => {
+        {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
           const y = PAD.top + plotH * (1 - t);
           return (
             <g key={i}>
-              <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
-                stroke="var(--border)" strokeWidth={0.7} strokeDasharray="4 3" />
-              <text x={PAD.left - 6} y={y + 4} textAnchor="end" fontSize={9} fill="var(--text-secondary)">
-                {Math.round((minVal + range * t) / 1000)}K
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Bars */}
-        {chartData.map((d, i) => {
-          const isActive = activeBar === i;
-          const isLast = i === chartData.length - 1;
-          const dimmed = activeBar !== null && !isActive;
-          const x = PAD.left + gap * i + (gap - barW) / 2;
-          const bY = barY(d.value);
-          const bH = barH(d.value);
-          const delta = i > 0
-            ? ((d.value - chartData[i - 1].value) / chartData[i - 1].value) * 100 : null;
-
-          return (
-            <g
-              key={i}
-              style={{ cursor: "pointer" }}
-              onClick={() => onBarClick(isActive ? null : i)}
-            >
-              {/* Hit area */}
-              <rect x={PAD.left + gap * i} y={PAD.top} width={gap} height={plotH + PAD.bottom}
-                fill="transparent" />
-              {/* Bar */}
-              <rect
-                x={x} y={bY} width={barW} height={bH} rx={3}
-                fill={isActive || isLast ? "url(#barGrad)" : "var(--accent)"}
-                opacity={dimmed ? 0.12 : isActive ? 1 : isLast ? 0.9 : 0.3}
-                style={{ transition: "opacity 0.15s ease" }}
+              <line
+                x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+                stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3 4"
               />
-              {/* Active highlight ring */}
-              {isActive && (
-                <rect x={x - 1} y={bY - 1} width={barW + 2} height={bH + 2} rx={4}
-                  fill="none" stroke="url(#barGrad)" strokeWidth={1.5} opacity={0.6} />
-              )}
-              {/* Tooltip when active */}
-              {isActive && (() => {
-                const txw = 72; const txh = delta !== null ? 28 : 18;
-                const tx = Math.min(Math.max(x + barW / 2 - txw / 2, PAD.left), W - PAD.right - txw);
-                const ty = bY - txh - 8;
-                return (
-                  <g>
-                    <rect x={tx} y={ty} width={txw} height={txh} rx={6}
-                      fill="var(--card)" stroke="var(--accent)" strokeWidth={0.8} opacity={0.95} />
-                    <text x={tx + txw / 2} y={ty + 11} textAnchor="middle" fontSize={9}
-                      fill="var(--text)" fontWeight={700}>
-                      {fmtK(d.value)}
-                    </text>
-                    {delta !== null && (
-                      <text x={tx + txw / 2} y={ty + 22} textAnchor="middle" fontSize={8}
-                        fill={delta >= 0 ? "#00D9A6" : "#FF6B6B"}>
-                        {delta >= 0 ? "+" : ""}{delta.toFixed(1)} % vs préc.
-                      </text>
-                    )}
-                    {/* Arrow */}
-                    <polygon
-                      points={`${x + barW / 2 - 4},${bY - 2} ${x + barW / 2 + 4},${bY - 2} ${x + barW / 2},${bY + 3}`}
-                      fill="var(--accent)" opacity={0.6}
-                    />
-                  </g>
-                );
-              })()}
-              {/* Month label */}
-              <text
-                x={x + barW / 2} y={H - PAD.bottom + 14}
-                textAnchor="middle" fontSize={9}
-                fill={isActive ? "var(--accent)" : isLast ? "var(--text)" : "var(--text-secondary)"}
-                fontWeight={isActive || isLast ? 700 : 400}
-              >
-                {d.month}
+              <text x={PAD.left - 8} y={y + 3.5} textAnchor="end" fontSize={8.5}
+                fill="var(--text-secondary)" fontFamily="'Space Mono', monospace">
+                {fmtK(minVal + valRange * t)}
               </text>
             </g>
           );
         })}
+
+        {/* Area fill */}
+        <path d={areaPath} fill="url(#areaGrad)" />
+
+        {/* Line */}
+        <path
+          d={linePath}
+          fill="none"
+          stroke="url(#lineGrad)"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#lineGlow)"
+        />
+
+        {/* End-point dot */}
+        <circle
+          cx={points[points.length - 1].x}
+          cy={points[points.length - 1].y}
+          r={4}
+          fill="#00D9A6"
+          stroke="var(--card)"
+          strokeWidth={2}
+        />
+        {/* Animated pulse on last point */}
+        <circle
+          cx={points[points.length - 1].x}
+          cy={points[points.length - 1].y}
+          r={4}
+          fill="none"
+          stroke="#00D9A6"
+          strokeWidth={1.5}
+          opacity={0.4}
+        >
+          <animate attributeName="r" from="4" to="14" dur="2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
+        </circle>
+
+        {/* X-axis labels */}
+        {xLabels.map(d => (
+          <text
+            key={d.i}
+            x={xOf(d.i)}
+            y={H - PAD.bottom + 16}
+            textAnchor="middle"
+            fontSize={8.5}
+            fill="var(--text-secondary)"
+            fontFamily="'Space Mono', monospace"
+          >
+            {d.shortLabel}
+          </text>
+        ))}
+
+        {/* Hover crosshair + tooltip */}
+        {hoverIdx !== null && (() => {
+          const px = points[hoverIdx].x;
+          const py = points[hoverIdx].y;
+          const txw = 90;
+          const txh = hoverDelta !== null ? 38 : 24;
+          const tx = Math.min(Math.max(px - txw / 2, PAD.left), W - PAD.right - txw);
+          const ty = Math.max(py - txh - 14, PAD.top);
+          return (
+            <g>
+              {/* Vertical line */}
+              <line x1={px} y1={PAD.top} x2={px} y2={PAD.top + plotH}
+                stroke="var(--accent)" strokeWidth={0.8} strokeDasharray="3 3" opacity={0.5} />
+              {/* Horizontal line */}
+              <line x1={PAD.left} y1={py} x2={W - PAD.right} y2={py}
+                stroke="var(--accent)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.25} />
+              {/* Dot */}
+              <circle cx={px} cy={py} r={5} fill="url(#lineGrad)" stroke="var(--card)" strokeWidth={2.5} />
+              <circle cx={px} cy={py} r={3} fill="#fff" opacity={0.9} />
+              {/* Tooltip card */}
+              <rect x={tx} y={ty} width={txw} height={txh} rx={10}
+                fill="var(--card)" stroke="var(--accent)" strokeWidth={0.7} opacity={0.96} />
+              <text x={tx + txw / 2} y={ty + 14} textAnchor="middle" fontSize={10}
+                fill="var(--text)" fontWeight={700} fontFamily="'Space Mono', monospace">
+                {fmtK(chartData[hoverIdx].value)}
+              </text>
+              {hoverDelta !== null && (
+                <text x={tx + txw / 2} y={ty + 28} textAnchor="middle" fontSize={8.5}
+                  fill={hoverDelta >= 0 ? "#00D9A6" : "#FF6B6B"} fontWeight={600}>
+                  {hoverDelta >= 0 ? "+" : ""}{hoverDelta.toFixed(1)} % vs préc.
+                </text>
+              )}
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );
@@ -257,10 +440,11 @@ function PatrimoineChart({
 // ── KPI Detail Sheet ──────────────────────────────────────────
 
 function KpiSheet({
-  kpi, entries, patrimoine, cashflow, rendement, projection, onClose,
+  kpi, entries, patrimoine, cashflow, rendement, projection, tmi, onClose,
 }: {
   kpi: KpiKey; entries: Entry[];
   patrimoine: number; cashflow: number; rendement: number; projection: number;
+  tmi: number;
   onClose: () => void;
 }) {
   const TITLES: Record<KpiKey, { label: string; icon: React.ElementType; color: string }> = {
@@ -549,7 +733,6 @@ export default function DashboardPage() {
   const tmi = useUserTmi();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeBar, setActiveBar] = useState<number | null>(null);
   const [activeKpi, setActiveKpi] = useState<KpiKey | null>(null);
 
   useEffect(() => {
@@ -638,40 +821,45 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-3">
             <KpiCard
               label="Patrimoine net" active={activeKpi === "patrimoine"}
+              icon={Landmark} color="accent"
               value={fmtK(patrimoineNet).replace(/[€KM]/g, "").trim()}
               unit={Math.abs(patrimoineNet) >= 1_000_000 ? "M€" : Math.abs(patrimoineNet) >= 1_000 ? "K€" : "€"}
               sub="valeur − crédits"
+              sparkData={Array.from({ length: 8 }, (_, i) => patrimoineNet / Math.pow(1.015, 7 - i))}
               onClick={() => toggleKpi("patrimoine")}
             />
             <KpiCard
               label="Cashflow mensuel" active={activeKpi === "cashflow"}
+              icon={Wallet} color="green"
               value={`${cashflowMensuel >= 0 ? "+" : "−"}${fmt(cashflowMensuel)}`}
               unit="€/mo" sub="après charges & impôts"
               positive={cashflowMensuel >= 0}
+              negative={cashflowMensuel < 0}
+              sparkData={Array.from({ length: 8 }, (_, i) => cashflowMensuel * (0.85 + i * 0.02 + Math.sin(i) * 0.04))}
               onClick={() => toggleKpi("cashflow")}
             />
             <KpiCard
               label="Rendement net" active={activeKpi === "rendement"}
+              icon={Percent} color="yellow"
               value={rendementNet.toFixed(1).replace(".", ",")}
               unit="%" sub="charges & fiscalité incluses"
+              sparkData={Array.from({ length: 8 }, (_, i) => rendementNet * (0.92 + i * 0.012))}
               onClick={() => toggleKpi("rendement")}
             />
             <KpiCard
               label="Projection 10 ans" active={activeKpi === "projection"}
+              icon={CalendarRange} color="accent"
               value={fmtK(projection10ans).replace(/[€KM]/g, "").trim()}
               unit={Math.abs(projection10ans) >= 1_000_000 ? "M€" : Math.abs(projection10ans) >= 1_000 ? "K€" : "€"}
               sub="hyp. revalorisation 2 %"
+              sparkData={Array.from({ length: 8 }, (_, i) => projection10ans * (0.6 + i * 0.057))}
               onClick={() => toggleKpi("projection")}
             />
           </div>
 
           {/* Chart */}
           {patrimoineNet > 0 && (
-            <PatrimoineChart
-              patrimoine={patrimoineNet}
-              activeBar={activeBar}
-              onBarClick={setActiveBar}
-            />
+            <PatrimoineChart patrimoine={patrimoineNet} />
           )}
 
           {/* Property list */}
@@ -699,6 +887,7 @@ export default function DashboardPage() {
           kpi={activeKpi} entries={entries}
           patrimoine={patrimoineNet} cashflow={cashflowMensuel}
           rendement={rendementNet} projection={projection10ans}
+          tmi={tmi}
           onClose={() => setActiveKpi(null)}
         />
       )}

@@ -18,10 +18,10 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between px-5 py-4 bg-card border-b border-border">
       {/* Logo */}
-      <span className="font-mono font-bold text-xl tracking-tight">
+      <Link href="/dashboard" className="font-mono font-bold text-xl tracking-tight">
         <span style={{ color: "var(--accent)" }}>Prop</span>
         <span className="text-text">folio</span>
-      </span>
+      </Link>
 
       {/* Right actions */}
       <div className="flex items-center gap-1">

@@ -155,6 +155,17 @@ function PropertyCard({
                   : ""}
               </p>
             </div>
+            {property.dpe && (
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                style={{
+                  background: { A: "#319834", B: "#33CC33", C: "#CBFC01", D: "#FFFF00", E: "#FFCC00", F: "#FF6600", G: "#FF0000" }[property.dpe] ?? "#888",
+                  color: property.dpe <= "C" ? "#000" : "#000"
+                }}
+              >
+                DPE {property.dpe}
+              </span>
+            )}
             <div
               className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${style.text} ${style.bg}`}
             >
@@ -206,9 +217,9 @@ function PropertyCard({
                   <span
                     className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                       delta > 5
-                        ? "bg-green/10 text-green"
+                        ? "bg-red/10 text-red"
                         : delta < -5
-                        ? "bg-accent/10 text-accent"
+                        ? "bg-green/10 text-green"
                         : "bg-border text-text-secondary"
                     }`}
                   >

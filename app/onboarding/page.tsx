@@ -261,182 +261,166 @@ export default function OnboardingPage() {
 
   return (
     <div
-      className="min-h-screen bg-bg flex flex-col overflow-hidden select-none"
+      className="onboarding-root"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-        <div style={{ width: 36 }}>
-          {slide > 0 && (
-            <button
-              onClick={back}
-              className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary hover:text-text transition-colors"
-            >
-              <ArrowLeft size={16} />
-            </button>
-          )}
-        </div>
-        <span
-          style={{
-            background: "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            fontWeight: 800,
-            fontSize: 18,
-          }}
-        >
-          Propfolio
-        </span>
-        <button
-          onClick={complete}
-          className="text-sm text-text-secondary hover:text-text transition-colors"
-          style={{ width: 36, textAlign: "right" }}
-        >
-          Passer
-        </button>
-      </div>
-
-      {/* ── Text block (slides horizontally) ── */}
-      <div className="px-6 pt-1 pb-5 shrink-0 overflow-hidden">
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            width: `${SLIDES.length * 100}%`,
-            transform: `translateX(-${(slide * 100) / SLIDES.length}%)`,
-            transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-          }}
-        >
-          {SLIDES.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <div key={i} style={{ width: `${100 / SLIDES.length}%`, paddingRight: "6px" }}>
-                <div className="flex items-center gap-2 mb-2.5">
-                  <div
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-                    style={{
-                      background: "rgba(108,99,255,0.12)",
-                      color: "#6C63FF",
-                      border: "1px solid rgba(108,99,255,0.25)",
-                    }}
-                  >
-                    <Icon size={11} />
-                    {s.badge}
-                  </div>
-                </div>
-                <h1 className="text-[22px] font-bold text-text mb-1.5 leading-tight">{s.title}</h1>
-                <p className="text-sm text-text-secondary leading-relaxed">{s.subtitle}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Phone carousel ── */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden">
-        {/* Single phone — centered */}
-        <div style={{ position: "relative" }}>
-          {/* Ambient glow */}
-          <div
-            style={{
-              position: "absolute",
-              inset: -40,
-              background: "radial-gradient(ellipse at center, rgba(108,99,255,0.18) 0%, transparent 65%)",
-              zIndex: 0,
-              pointerEvents: "none",
-            }}
-          />
-          {/* Tap hint ring */}
-          <div
-            style={{
-              position: "absolute",
-              inset: -6,
-              borderRadius: 34,
-              border: "1.5px solid rgba(108,99,255,0.2)",
-              zIndex: 0,
-              pointerEvents: "none",
-            }}
-          />
-          {/* Phone — clickable */}
+      {/* Outer container — max 440px, centered */}
+      <div className="onboarding-container">
+        {/* ── Top bar ── */}
+        <div className="onboarding-topbar">
+          <div style={{ width: 36 }}>
+            {slide > 0 && (
+              <button
+                onClick={back}
+                className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+              >
+                <ArrowLeft size={16} />
+              </button>
+            )}
+          </div>
+          <span className="onboarding-logo">
+            Propfolio
+          </span>
           <button
-            onClick={() => setZoomed(true)}
-            style={{
-              position: "relative",
-              zIndex: 1,
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "zoom-in",
-              display: "block",
-              transition: "transform 0.2s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-            aria-label="Agrandir l'aperçu"
+            onClick={complete}
+            className="text-sm text-text-secondary hover:text-text transition-colors"
+            style={{ width: 36, textAlign: "right" }}
           >
-            <PhoneFrame width={210} height={340}>
-              <CurrentMockup />
-            </PhoneFrame>
-            {/* Zoom hint badge */}
+            Passer
+          </button>
+        </div>
+
+        {/* ── Slide content — vertical center ── */}
+        <div className="onboarding-slide-area">
+          {/* Text block (slides horizontally) */}
+          <div className="onboarding-text-block">
+            <div
+              className="onboarding-text-track"
+              style={{
+                width: `${SLIDES.length * 100}%`,
+                transform: `translateX(-${(slide * 100) / SLIDES.length}%)`,
+              }}
+            >
+              {SLIDES.map((s, i) => {
+                const Icon = s.icon;
+                return (
+                  <div key={i} className="onboarding-text-slide" style={{ width: `${100 / SLIDES.length}%` }}>
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                        style={{
+                          background: "rgba(108,99,255,0.12)",
+                          color: "#6C63FF",
+                          border: "1px solid rgba(108,99,255,0.25)",
+                        }}
+                      >
+                        <Icon size={11} />
+                        {s.badge}
+                      </div>
+                    </div>
+                    <h1 className="onboarding-title">{s.title}</h1>
+                    <p className="onboarding-subtitle">{s.subtitle}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Phone mockup — centered ── */}
+          <div className="onboarding-phone-wrap">
+            {/* Ambient glow */}
             <div
               style={{
                 position: "absolute",
-                bottom: 10,
-                right: 10,
-                background: "rgba(108,99,255,0.85)",
-                backdropFilter: "blur(8px)",
-                borderRadius: 8,
-                padding: "3px 7px",
-                fontSize: 9,
-                color: "#fff",
-                fontWeight: 600,
-                letterSpacing: "0.02em",
-                zIndex: 2,
-              }}
-            >
-              Tap pour zoomer
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Bottom navigation ── */}
-      <div className="px-6 pb-9 pt-4 shrink-0">
-        {/* Dots */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setSlide(i)}
-              style={{
-                height: 7,
-                width: slide === i ? 28 : 7,
-                borderRadius: 4,
-                background: slide === i ? "#6C63FF" : "rgba(108,99,255,0.25)",
-                transition: "width 0.25s ease, background 0.25s ease",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
+                inset: -40,
+                background: "radial-gradient(ellipse at center, rgba(108,99,255,0.18) 0%, transparent 65%)",
+                zIndex: 0,
+                pointerEvents: "none",
               }}
             />
-          ))}
+            {/* Tap hint ring */}
+            <div
+              style={{
+                position: "absolute",
+                inset: -6,
+                borderRadius: 34,
+                border: "1.5px solid rgba(108,99,255,0.2)",
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+            {/* Phone — clickable */}
+            <button
+              onClick={() => setZoomed(true)}
+              className="onboarding-phone-btn"
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              aria-label="Agrandir l'aperçu"
+            >
+              <PhoneFrame width={210} height={340}>
+                <CurrentMockup />
+              </PhoneFrame>
+              {/* Zoom hint badge */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 10,
+                  right: 10,
+                  background: "rgba(108,99,255,0.85)",
+                  backdropFilter: "blur(8px)",
+                  borderRadius: 8,
+                  padding: "3px 7px",
+                  fontSize: 9,
+                  color: "#fff",
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  zIndex: 2,
+                }}
+              >
+                Tap pour zoomer
+              </div>
+            </button>
+          </div>
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={next}
-          className="w-full py-4 rounded-2xl text-base font-bold text-white active:opacity-80"
-          style={{
-            background: "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)",
-            boxShadow: "0 8px 28px rgba(108,99,255,0.4)",
-            transition: "opacity 0.15s ease, transform 0.15s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-        >
-          {isLast ? "Commencer" : "Suivant"}
-        </button>
+        {/* ── Bottom navigation — pinned to bottom ── */}
+        <div className="onboarding-bottom">
+          {/* Dots */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSlide(i)}
+                style={{
+                  height: 7,
+                  width: slide === i ? 28 : 7,
+                  borderRadius: 4,
+                  background: slide === i ? "#6C63FF" : "rgba(108,99,255,0.25)",
+                  transition: "width 0.25s ease, background 0.25s ease",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={next}
+            className="w-full py-4 rounded-2xl text-base font-bold text-white active:opacity-80"
+            style={{
+              background: "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)",
+              boxShadow: "0 8px 28px rgba(108,99,255,0.4)",
+              transition: "opacity 0.15s ease, transform 0.15s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+          >
+            {isLast ? "Commencer" : "Suivant"}
+          </button>
+        </div>
       </div>
 
       {/* ── Zoom overlay ── */}
@@ -524,6 +508,129 @@ export default function OnboardingPage() {
         @keyframes zoomIn {
           from { transform: scale(0.7); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Onboarding layout ────────────────────────── */
+        .onboarding-root {
+          height: 100vh;
+          height: 100dvh;
+          background: var(--bg);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          user-select: none;
+        }
+
+        .onboarding-container {
+          width: 100%;
+          max-width: 440px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          overflow: hidden;
+        }
+
+        /* Top bar */
+        .onboarding-topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 24px 12px;
+          flex-shrink: 0;
+        }
+
+        .onboarding-logo {
+          background: linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-weight: 800;
+          font-size: 18px;
+        }
+
+        /* Slide area — fills remaining space, centers content */
+        .onboarding-slide-area {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 0;
+          overflow: hidden;
+          gap: 24px;
+        }
+
+        /* Text block */
+        .onboarding-text-block {
+          width: 100%;
+          padding: 0 24px;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .onboarding-text-track {
+          display: flex;
+          flex-direction: row;
+          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .onboarding-text-slide {
+          padding-right: 6px;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+        }
+
+        .onboarding-title {
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--text);
+          margin-bottom: 6px;
+          line-height: 1.2;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+        }
+
+        .onboarding-subtitle {
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--text-secondary);
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+        }
+
+        /* Phone mockup wrap */
+        .onboarding-phone-wrap {
+          position: relative;
+          flex-shrink: 0;
+          max-width: 260px;
+          margin: 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .onboarding-phone-btn {
+          position: relative;
+          z-index: 1;
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: zoom-in;
+          display: block;
+          transition: transform 0.2s ease;
+        }
+
+        /* Bottom nav */
+        .onboarding-bottom {
+          flex-shrink: 0;
+          padding: 16px 24px 36px;
+        }
+
+        /* ── Desktop: slightly larger title ──────────── */
+        @media (min-width: 768px) {
+          .onboarding-title {
+            font-size: 28px;
+          }
         }
       `}</style>
     </div>

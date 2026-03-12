@@ -75,11 +75,14 @@ function getImprovements(scores: ScoreDetail): string[] {
       score: scores.occupation,
       tip: "Optimisez votre taux d'occupation via une gestion locative proactive ou un bail en colocation.",
     },
-    {
-      score: scores.emplacement,
-      tip: "Suivez les projets urbains et les évolutions du quartier qui peuvent impacter positivement la valeur de revente.",
-    },
   ];
+
+  if (scores.dpe < 60) {
+    tips.push({
+      score: scores.dpe,
+      tip: "Un mauvais DPE (Diagnostic de Performance Énergétique) pénalise la valorisation de votre bien et peut le soumettre à terme aux interdictions de location. Envisagez des travaux de rénovation énergétique.",
+    });
+  }
 
   return tips
     .sort((a, b) => a.score - b.score)
@@ -111,6 +114,7 @@ type EditForm = {
   loan_duration: string;
   loan_monthly: string;
   loan_remaining: string;
+  dpe: string;
 };
 
 // ── SVG Score Ring ────────────────────────────────────────────
@@ -255,6 +259,9 @@ function TabOverview({
     ...(property.surface
       ? [{ label: "Surface", value: `${property.surface} m²` }]
       : []),
+    ...(property.dpe
+      ? [{ label: "DPE", value: property.dpe }]
+      : []),
     ...(property.purchase_date
       ? [{ label: "Date d'achat", value: property.purchase_date }]
       : []),
@@ -331,19 +338,19 @@ function TabOverview({
                 const isBelow = delta < -5;
                 return (
                   <div className={`rounded-xl p-3 flex items-center justify-between ${
-                    isAbove ? "bg-green/8 border border-green/20"
-                    : isBelow ? "bg-accent/8 border border-accent/20"
+                    isAbove ? "bg-red/8 border border-red/20"
+                    : isBelow ? "bg-green/8 border border-green/20"
                     : "bg-border/30 border border-border"
                   }`}>
                     <div>
-                      <p className={`text-xs font-semibold ${isAbove ? "text-green" : isBelow ? "text-accent" : "text-text-secondary"}`}>
+                      <p className={`text-xs font-semibold ${isAbove ? "text-red" : isBelow ? "text-green" : "text-text-secondary"}`}>
                         {isAbove ? "Au-dessus du marché" : isBelow ? "Potentiel de revalorisation" : "Dans les prix du marché"}
                       </p>
                       <p className="text-[11px] text-text-secondary mt-0.5">
                         Votre bien : {Math.round(propM2).toLocaleString("fr-FR")} €/m²
                       </p>
                     </div>
-                    <span className={`font-mono font-bold text-lg ${isAbove ? "text-green" : isBelow ? "text-accent" : "text-text"}`}>
+                    <span className={`font-mono font-bold text-lg ${isAbove ? "text-red" : isBelow ? "text-green" : "text-text"}`}>
                       {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
                     </span>
                   </div>
@@ -522,7 +529,7 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
     { key: "cashflow" as const, label: "Cashflow", weight: 25 },
     { key: "occupation" as const, label: "Taux d'occupation", weight: 20 },
     { key: "valorisation" as const, label: "Valorisation", weight: 15 },
-    { key: "emplacement" as const, label: "Emplacement", weight: 15 },
+    { key: "dpe" as const, label: "Diagnostic (DPE)", weight: 15 },
   ];
 
   const improvements = getImprovements(scores);
@@ -820,6 +827,33 @@ function EditSheet({
                     {estimError && (
                       <p className="mt-2 text-[11px] text-red px-1">{estimError}</p>
                     )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-text-secondary">Classe énergie (DPE)</p>
+                    <div className="flex gap-1.5">
+                      {(["A", "B", "C", "D", "E", "F", "G"] as const).map(letter => {
+                        const selected = form.dpe === letter;
+                        const DPE_COLORS: Record<string, string> = { A: "#319834", B: "#33CC33", C: "#CBFC01", D: "#FFFF00", E: "#FFCC00", F: "#FF6600", G: "#FF0000" };
+                        const color = DPE_COLORS[letter];
+                        return (
+                          <button
+                            key={letter}
+                            type="button"
+                            onClick={() => onChange("dpe", form.dpe === letter ? "" : letter)}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                            style={{
+                              background: selected ? color : "transparent",
+                              borderColor: selected ? color : "var(--border)",
+                              color: selected ? "#000" : "var(--text-secondary)",
+                              opacity: selected ? 1 : 0.6,
+                              boxShadow: selected ? `0 2px 8px ${color}55` : "none",
+                            }}
+                          >
+                            {letter}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div>
                     <label className={labelClass}>Date d&apos;achat</label>
@@ -1142,6 +1176,7 @@ export default function BienDetailPage() {
     loan_duration: "",
     loan_monthly: "",
     loan_remaining: "",
+    dpe: "",
   });
 
   useEffect(() => {
@@ -1222,6 +1257,7 @@ export default function BienDetailPage() {
       loan_duration: loan?.duration_years?.toString() ?? "",
       loan_monthly: loan?.monthly_payment?.toString() ?? "",
       loan_remaining: loan?.remaining_capital?.toString() ?? "",
+      dpe: property.dpe ?? "",
     });
     setEditOpen(true);
   }
@@ -1246,6 +1282,7 @@ export default function BienDetailPage() {
           current_value: parseFloat(editForm.current_value) || 0,
           purchase_date: editForm.purchase_date || null,
           regime: editForm.regime || null,
+          dpe: editForm.dpe || null,
         })
         .eq("id", id);
 

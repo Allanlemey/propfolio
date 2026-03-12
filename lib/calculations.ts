@@ -14,6 +14,7 @@ export type Property = {
   purchase_date: string | null;
   current_value: number;
   regime: string | null;
+  dpe: string | null;
 };
 
 export type Loan = {
@@ -44,7 +45,7 @@ export type ScoreDetail = {
   cashflow: number;
   occupation: number;
   valorisation: number;
-  emplacement: number;
+  dpe: number;
   global: number;
 };
 
@@ -270,14 +271,19 @@ export function computeScoreDetails(
   const occupationScore = 95;
   const valorisationScore =
     plusValuePct > 10 ? 85 : plusValuePct > 5 ? 65 : plusValuePct > 0 ? 50 : 30;
-  const emplacementScore = 70;
+  
+  let dpeScore = 50; // Default if no DPE
+  if (property.dpe) {
+    const dpeMap: Record<string, number> = { A: 95, B: 95, C: 80, D: 60, E: 40, F: 20, G: 20 };
+    dpeScore = dpeMap[property.dpe] ?? 50;
+  }
 
   const global = Math.round(
     rendementScore * 0.25 +
       cashflowScore * 0.25 +
       occupationScore * 0.2 +
       valorisationScore * 0.15 +
-      emplacementScore * 0.15
+      dpeScore * 0.15
   );
 
   return {
@@ -285,7 +291,7 @@ export function computeScoreDetails(
     cashflow: cashflowScore,
     occupation: occupationScore,
     valorisation: valorisationScore,
-    emplacement: emplacementScore,
+    dpe: dpeScore,
     global,
   };
 }
