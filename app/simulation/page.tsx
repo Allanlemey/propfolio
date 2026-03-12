@@ -225,7 +225,7 @@ type SavedSim = {
   params: {
     price: number; apport: number; taux: number; duree: number;
     loyer: number; regime: string; revaluation: number;
-    vacance: number; inflationLoyers: number; listingUrl?: string;
+    vacance: number; inflationLoyers: number; listingUrl?: string; dpe?: string;
   };
   results: {
     cashflow: number; rendementBrut: number; rendementNet: number;
@@ -360,8 +360,9 @@ export default function SimulationPage() {
   const [vacance, setVacance] = useState(4);
   const [inflationLoyers, setInflationLoyers] = useState(1.8);
 
-  // Listing URL
+  // Listing URL & DPE
   const [listingUrl, setListingUrl] = useState("");
+  const [dpe, setDpe] = useState("");
 
   // Simulation name
   const [simName, setSimName] = useState("");
@@ -396,6 +397,7 @@ export default function SimulationPage() {
     setVacance(s.params.vacance ?? 4);
     setInflationLoyers(s.params.inflationLoyers ?? 1.8);
     setListingUrl(s.params.listingUrl ?? "");
+    setDpe(s.params.dpe ?? "");
     setSimName(s.name);
     setActiveSimId(s.id);
     simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -456,7 +458,7 @@ export default function SimulationPage() {
   function resetForm() {
     setPrice(120000); setApport(10000); setTaux(3.8); setDuree(20);
     setLoyer(650); setRegime("LMNP micro-BIC"); setRevaluation(2);
-    setVacance(4); setInflationLoyers(1.8); setListingUrl(""); setSimName("");
+    setVacance(4); setInflationLoyers(1.8); setListingUrl(""); setDpe(""); setSimName("");
     setActiveSimId(null);
     simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -483,6 +485,7 @@ export default function SimulationPage() {
         vacance,
         inflationLoyers,
         listingUrl: listingUrl.trim() || undefined,
+        dpe: dpe || undefined,
       },
       results: {
         cashflow: Math.round(cashflow),
@@ -603,6 +606,35 @@ export default function SimulationPage() {
               placeholder="https://www.leboncoin.fr/..."
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-colors"
             />
+          </div>
+        </div>
+
+        {/* DPE */}
+        <div className="space-y-2">
+          <p className="text-sm text-text-secondary">Classe énergie (DPE)</p>
+          <div className="flex gap-1.5">
+            {(["A", "B", "C", "D", "E", "F", "G"] as const).map(letter => {
+              const selected = dpe === letter;
+              const DPE_COLORS: Record<string, string> = { A: "#319834", B: "#33CC33", C: "#CBFC01", D: "#FFFF00", E: "#FFCC00", F: "#FF6600", G: "#FF0000" };
+              const color = DPE_COLORS[letter];
+              return (
+                <button
+                  key={letter}
+                  type="button"
+                  onClick={() => setDpe(dpe === letter ? "" : letter)}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                  style={{
+                    background: selected ? color : "transparent",
+                    borderColor: selected ? color : "var(--border)",
+                    color: selected ? "#000" : "var(--text-secondary)",
+                    opacity: selected ? 1 : 0.6,
+                    boxShadow: selected ? `0 2px 8px ${color}55` : "none",
+                  }}
+                >
+                  {letter}
+                </button>
+              );
+            })}
           </div>
         </div>
 
