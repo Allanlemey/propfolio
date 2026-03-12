@@ -634,9 +634,9 @@ function EditSheet({
 }) {
   const REGIME_OPTIONS = [
     "LMNP micro-BIC",
-    "LMNP réel simplifié",
-    "Location nue micro-foncier",
-    "Location nue régime réel",
+    "LMNP réel",
+    "Nu micro-foncier",
+    "Nu réel",
   ];
 
   const TYPE_OPTIONS = [

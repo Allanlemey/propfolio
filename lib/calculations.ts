@@ -93,13 +93,16 @@ export function calcMonthlyTax(
   switch (regime) {
     case "LMNP micro-BIC":
       return (annualRent * 0.5 * (TMI + PS)) / 12;
-    case "LMNP réel": {
+    case "LMNP réel":
+    case "LMNP réel simplifié": {
       const taxable = Math.max(0, annualRent - annualCharges - amortissement);
       return (taxable * PS) / 12;
     }
     case "Nu micro-foncier":
+    case "Location nue micro-foncier":
       return (annualRent * 0.7 * (TMI + PS)) / 12;
-    case "Nu réel": {
+    case "Nu réel":
+    case "Location nue régime réel": {
       const taxable = Math.max(0, annualRent - annualCharges - annualInterest);
       return (taxable * (TMI + PS)) / 12;
     }

@@ -12,6 +12,8 @@ import {
   Plus,
   ChevronRight,
   TrendingUp,
+  ArrowUpDown,
+  Check,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { computeNetCashflow, computeScoreDetails } from "@/lib/calculations";
@@ -260,6 +262,11 @@ export default function BiensPage() {
   const [cards, setCards] = useState<PropertyCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [prixM2Map, setPrixM2Map] = useState<Record<string, number>>({});
+  
+  // Sorting
+  type SortKey = "name" | "value" | "cashflow" | "surface" | "score";
+  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [sortOpen, setSortOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -372,13 +379,52 @@ export default function BiensPage() {
           )}
         </div>
         {cards.length > 0 && (
-          <Link
-            href="/biens/nouveau"
-            className="flex items-center gap-1.5 bg-accent text-white text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
-          >
-            <Plus size={14} />
-            Ajouter
-          </Link>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setSortOpen(!sortOpen)}
+                className="flex items-center gap-1.5 bg-bg border border-border text-text-secondary text-xs font-semibold px-3 py-2 rounded-xl hover:text-text hover:border-accent/40 active:scale-[0.98] transition-all"
+              >
+                <ArrowUpDown size={14} />
+                Trier
+              </button>
+              {sortOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2">
+                    {[
+                      { key: "name", label: "Nom" },
+                      { key: "value", label: "Valeur actuelle" },
+                      { key: "cashflow", label: "Cashflow net" },
+                      { key: "score", label: "Score global" },
+                      { key: "surface", label: "Surface" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => {
+                          setSortBy(opt.key as SortKey);
+                          setSortOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-left transition-colors ${
+                          sortBy === opt.key ? "text-accent bg-accent/5 font-bold" : "text-text-secondary hover:bg-bg hover:text-text"
+                        }`}
+                      >
+                        {opt.label}
+                        {sortBy === opt.key && <Check size={14} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <Link
+              href="/biens/nouveau"
+              className="flex items-center gap-1.5 bg-accent text-white text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+            >
+              <Plus size={14} />
+              Ajouter
+            </Link>
+          </div>
         )}
       </div>
 
@@ -386,13 +432,22 @@ export default function BiensPage() {
         <EmptyState />
       ) : (
         <div className="space-y-3">
-          {cards.map((card) => (
-            <PropertyCard
-              key={card.property.id}
-              card={card}
-              marketPrixM2={prixM2Map[card.property.id] ?? null}
-            />
-          ))}
+          {[...cards]
+            .sort((a, b) => {
+              if (sortBy === "name") return a.property.name.localeCompare(b.property.name);
+              if (sortBy === "value") return b.property.current_value - a.property.current_value;
+              if (sortBy === "cashflow") return b.cashflow - a.cashflow;
+              if (sortBy === "score") return b.score - a.score;
+              if (sortBy === "surface") return (b.property.surface ?? 0) - (a.property.surface ?? 0);
+              return 0;
+            })
+            .map((card) => (
+              <PropertyCard
+                key={card.property.id}
+                card={card}
+                marketPrixM2={prixM2Map[card.property.id] ?? null}
+              />
+            ))}
           <AddPropertyCard />
         </div>
       )}
