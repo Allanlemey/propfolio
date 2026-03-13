@@ -123,10 +123,19 @@ function Stepper({
 
 // ── Projection chart ──────────────────────────────────────────
 
-function ProjectionChart({ data }: { data: { year: number; net: number }[] }) {
+function ProjectionChart({
+  data,
+  onSelectYear,
+}: {
+  data: { year: number; net: number }[];
+  onSelectYear?: (year: number, net: number) => void;
+}) {
   const W = 560,
     H = 160;
   const PAD = { top: 16, right: 8, bottom: 28, left: 52 };
+
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; year: number; net: number } | null>(null);
 
   const values = data.map((d) => d.net);
   const minVal = Math.min(0, ...values);
@@ -143,77 +152,145 @@ function ProjectionChart({ data }: { data: { year: number; net: number }[] }) {
   const barH = (v: number) =>
     Math.max(0, ((v - minVal) / range) * plotH);
 
+  const handleBarClick = (i: number, d: { year: number; net: number }, event: React.MouseEvent) => {
+    setSelectedIndex(i);
+    onSelectYear?.(d.year, d.net);
+    const rect = (event.target as Element).closest('svg')?.getBoundingClientRect();
+    if (rect) {
+      const barX = PAD.left + gap * i + (gap - barW) / 2 + barW / 2;
+      setTooltip({
+        x: (barX / W) * rect.width,
+        y: barY(d.net) / H * rect.height - 8,
+        year: d.year,
+        net: d.net,
+      });
+    }
+  };
+
+  const handleCloseTooltip = () => {
+    setTooltip(null);
+    setSelectedIndex(null);
+  };
+
+  // Réinitialiser la sélection quand les données changent
+  useEffect(() => {
+    setSelectedIndex(null);
+    setTooltip(null);
+  }, [data]);
+
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
-      style={{ height: 180 }}
-      aria-label="Projection patrimoine net 10 ans"
-    >
-      <defs>
-        <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6C63FF" />
-          <stop offset="100%" stopColor="#00D9A6" />
-        </linearGradient>
-      </defs>
+    <div className="relative">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full cursor-pointer"
+        style={{ height: 180 }}
+        aria-label="Projection patrimoine net 10 ans"
+        onClick={handleCloseTooltip}
+      >
+        <defs>
+          <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6C63FF" />
+            <stop offset="100%" stopColor="#00D9A6" />
+          </linearGradient>
+        </defs>
 
-      {[0, 0.5, 1].map((t, i) => {
-        const val = minVal + range * t;
-        const y = PAD.top + plotH * (1 - t);
-        return (
-          <g key={i}>
-            <line
-              x1={PAD.left}
-              y1={y}
-              x2={W - PAD.right}
-              y2={y}
-              stroke="var(--border)"
-              strokeWidth={0.7}
-              strokeDasharray="4 3"
-            />
-            <text
-              x={PAD.left - 6}
-              y={y + 4}
-              textAnchor="end"
-              fontSize={9}
-              fill="var(--text-secondary)"
-            >
-              {Math.abs(val) >= 1000
-                ? `${Math.round(val / 1000)}K`
-                : Math.round(val)}
-            </text>
-          </g>
-        );
-      })}
+        {[0, 0.5, 1].map((t, i) => {
+          const val = minVal + range * t;
+          const y = PAD.top + plotH * (1 - t);
+          return (
+            <g key={i}>
+              <line
+                x1={PAD.left}
+                y1={y}
+                x2={W - PAD.right}
+                y2={y}
+                stroke="var(--border)"
+                strokeWidth={0.7}
+                strokeDasharray="4 3"
+              />
+              <text
+                x={PAD.left - 6}
+                y={y + 4}
+                textAnchor="end"
+                fontSize={9}
+                fill="var(--text-secondary)"
+              >
+                {Math.abs(val) >= 1000
+                  ? `${Math.round(val / 1000)}K`
+                  : Math.round(val)}
+              </text>
+            </g>
+          );
+        })}
 
-      {data.map((d, i) => {
-        const isLast = i === data.length - 1;
-        const x = PAD.left + gap * i + (gap - barW) / 2;
-        return (
-          <g key={i}>
-            <rect
-              x={x}
-              y={barY(d.net)}
-              width={barW}
-              height={barH(d.net)}
-              rx={3}
-              fill={isLast ? "url(#projGrad)" : "var(--accent)"}
-              opacity={isLast ? 1 : 0.28}
-            />
-            <text
-              x={x + barW / 2}
-              y={H - PAD.bottom + 14}
-              textAnchor="middle"
-              fontSize={9}
-              fill={isLast ? "var(--text)" : "var(--text-secondary)"}
-              fontWeight={isLast ? 600 : 400}
-            >
-              {d.year === 0 ? "Auj." : `A${d.year}`}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+        {data.map((d, i) => {
+          const isLast = i === data.length - 1;
+          const isSelected = selectedIndex === i;
+          const x = PAD.left + gap * i + (gap - barW) / 2;
+          return (
+            <g key={i}>
+              <rect
+                x={x}
+                y={barY(d.net)}
+                width={barW}
+                height={barH(d.net)}
+                rx={3}
+                fill={isLast ? "url(#projGrad)" : "var(--accent)"}
+                opacity={isLast ? 1 : isSelected ? 0.6 : 0.28}
+                className="transition-all duration-200 hover:opacity-80"
+                style={{
+                  filter: isSelected ? 'drop-shadow(0 0 4px rgba(108,99,255,0.5))' : undefined,
+                  cursor: 'pointer',
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBarClick(i, d, e);
+                }}
+              />
+              <text
+                x={x + barW / 2}
+                y={H - PAD.bottom + 14}
+                textAnchor="middle"
+                fontSize={9}
+                fill={isLast || isSelected ? "var(--text)" : "var(--text-secondary)"}
+                fontWeight={isLast || isSelected ? 600 : 400}
+              >
+                {d.year === 0 ? "Auj." : `A${d.year}`}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="absolute pointer-events-none z-10"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <div className="bg-surface border border-border rounded-lg px-3 py-2 shadow-lg">
+            <p className="text-xs text-text-secondary mb-0.5">
+              {tooltip.year === 0 ? "Aujourd'hui" : `Année ${tooltip.year}`}
+            </p>
+            <p className="font-mono font-bold text-sm text-accent">
+              {fmtK(tooltip.net)}
+            </p>
+          </div>
+          <div className="w-2 h-2 bg-surface border-r border-b border-border rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
+        </div>
+      )}
+
+      {/* Instruction hint */}
+      {!tooltip && (
+        <p className="text-center text-[10px] text-text-secondary mt-1">
+          Cliquez sur une barre pour voir le détail
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -371,6 +448,12 @@ export default function SimulationPage() {
   const [savedSims, setSavedSims] = useState<SavedSim[]>([]);
   const [activeSimId, setActiveSimId] = useState<string | null>(null);
   const simulatorRef = useRef<HTMLDivElement>(null);
+
+  // Selected projection year for chart interaction
+  const [selectedProjectionIndex, setSelectedProjectionIndex] = useState<number>(0);
+
+  // Selected projection year (for clickable chart)
+  const [selectedProjectionIndex, setSelectedProjectionIndex] = useState<number>(0);
 
   useEffect(() => {
     async function loadSims() {
@@ -742,20 +825,28 @@ export default function SimulationPage() {
         <p className="text-[11px] text-text-secondary mb-3">
           Valeur bien revalorisée − capital restant dû
         </p>
-        <ProjectionChart data={projection} />
+        <ProjectionChart
+          data={projection}
+          onSelectYear={(year, net) => {
+            const idx = projection.findIndex((p) => p.year === year);
+            if (idx !== -1) setSelectedProjectionIndex(idx);
+          }}
+        />
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div className="bg-bg rounded-xl p-3 border border-border text-center">
             <p className="text-[10px] text-text-secondary mb-1">
-              Aujourd&apos;hui
+              {selectedProjectionIndex === 0 ? "Aujourd'hui" : `Année ${projection[selectedProjectionIndex]?.year ?? 0}`}
             </p>
             <p className="font-mono font-bold text-base text-text">
-              {fmtK(projection[0].net)}
+              {fmtK(projection[selectedProjectionIndex]?.net ?? projection[0].net)}
             </p>
           </div>
           <div className="bg-bg rounded-xl p-3 border border-border text-center">
-            <p className="text-[10px] text-text-secondary mb-1">Dans 10 ans</p>
+            <p className="text-[10px] text-text-secondary mb-1">
+              Dans 10 ans
+            </p>
             <p className="font-mono font-bold text-base text-accent">
-              {fmtK(projection[10].net)}
+              {fmtK(projection[10]?.net ?? 0)}
             </p>
           </div>
         </div>
