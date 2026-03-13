@@ -452,9 +452,6 @@ export default function SimulationPage() {
   // Selected projection year for chart interaction
   const [selectedProjectionIndex, setSelectedProjectionIndex] = useState<number>(0);
 
-  // Selected projection year (for clickable chart)
-  const [selectedProjectionIndex, setSelectedProjectionIndex] = useState<number>(0);
-
   useEffect(() => {
     async function loadSims() {
       const { data: { user } } = await supabase.auth.getUser();
