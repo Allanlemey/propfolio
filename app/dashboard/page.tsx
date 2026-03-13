@@ -7,6 +7,7 @@ import {
   Building2, Home, Store, Warehouse, Building, Plus,
   ChevronRight, TrendingUp, X, TrendingDown, Percent,
   CalendarRange, Wallet, Landmark, ArrowUpRight,
+  Newspaper, GraduationCap, PlayCircle, ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -14,6 +15,7 @@ import {
   getChargeAmounts, computeMonthlyTax, projectRemainingCapital,
 } from "@/lib/calculations";
 import type { Property, Loan, Charge, Revenue } from "@/lib/calculations";
+import { NEWS_ARTICLES, type Article } from "@/lib/news";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -727,6 +729,137 @@ function PropertyRow({ entry }: { entry: Entry }) {
   );
 }
 
+function ArticleSheet({ article, onClose }: { article: Article; onClose: () => void }) {
+  const Icon = article.icon;
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex flex-col justify-end"
+      onClick={onClose}
+      style={{ background: "rgba(11,11,26,0.8)", backdropFilter: "blur(8px)" }}
+    >
+      <div
+        className="bg-card border-t border-border rounded-t-3xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+        style={{ animation: "slideUp 0.3s cubic-bezier(0,0,0.2,1)" }}
+      >
+        <div className="sticky top-0 bg-card/80 backdrop-blur-md z-10 px-5 pt-4 pb-2">
+          <div className="flex justify-center mb-4">
+            <div className="w-10 h-1 bg-border rounded-full" />
+          </div>
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${article.color}`}>
+                {article.category} · {article.type === "cours" ? "Formation" : "Actualité"}
+              </span>
+              <h2 className="text-lg font-bold text-text leading-tight">{article.title}</h2>
+              <p className="text-xs text-text-secondary">{article.date}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-text transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        
+        <div className="px-5 py-6 text-sm text-text-secondary leading-relaxed space-y-4">
+          {article.content}
+          
+          <div className="mt-10 p-5 bg-accent/5 border border-accent/10 rounded-2xl text-center">
+            <p className="text-xs font-bold text-text mb-2">Vous voulez aller plus loin ?</p>
+            <p className="text-[11px] text-text-secondary mb-4">Inscrivez-vous à notre newsletter pour recevoir un conseil par semaine directement dans votre boîte mail.</p>
+            <button className="w-full py-2.5 bg-accent text-white rounded-xl text-xs font-bold shadow-lg shadow-accent/20">
+              S&apos;inscrire gratuitement
+            </button>
+          </div>
+        </div>
+        <div className="h-10" />
+      </div>
+    </div>
+  );
+}
+
+// ── News Section ─────────────────────────────────────────────
+
+function NewsCard({
+  article, onClick
+}: {
+  article: Article;
+  onClick: (id: string) => void;
+}) {
+  const Icon = article.icon;
+  return (
+    <div 
+      onClick={() => onClick(article.id)}
+      className="bg-bg border border-border rounded-2xl p-3.5 hover:border-accent/30 transition-all group active:scale-[0.98] cursor-pointer"
+    >
+      <div className="flex gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${article.color} bg-current/10`} style={{ borderColor: 'currentColor' }}>
+          <Icon size={18} strokeWidth={2} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+              {article.category}
+            </span>
+            <span className="text-[10px] text-text-muted">{article.date}</span>
+          </div>
+          <h3 className="text-sm font-semibold text-text leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+            {article.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-2">
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase ${
+              article.type === "cours" ? "bg-accent/10 text-accent border border-accent/20" : "bg-green/10 text-green border border-green/20"
+            }`}>
+              {article.type === "cours" ? "Formation" : "Actualité"}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-text-muted font-medium ml-auto">
+              <span>Lire plus</span>
+              <ArrowUpRight size={10} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewsSection({ onArticleClick }: { onArticleClick: (id: string) => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-bold text-text flex items-center gap-2">
+          <Newspaper size={16} className="text-accent" />
+          Actualités & Conseils
+        </h2>
+        <Link href="/conseils" className="text-[11px] text-accent font-semibold hover:underline">Tout voir</Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        {NEWS_ARTICLES.map(art => (
+          <NewsCard key={art.id} article={art} onClick={onArticleClick} />
+        ))}
+      </div>
+
+      <div className="bg-accent/5 border border-accent/10 rounded-2xl p-4 flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+          <GraduationCap size={24} />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-bold text-text">Bientôt : Académie Propfolio</p>
+          <p className="text-[10px] text-text-secondary mt-0.5 leading-tight">
+            Des cours complets pour passer de débutant à investisseur aguerri.
+          </p>
+        </div>
+        <button className="px-3 py-1.5 bg-accent text-white rounded-lg text-[10px] font-bold shadow-lg shadow-accent/20">
+          M&apos;abonner
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -734,6 +867,9 @@ export default function DashboardPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeKpi, setActiveKpi] = useState<KpiKey | null>(null);
+  const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
+
+  const activeArticle = NEWS_ARTICLES.find(a => a.id === activeArticleId);
 
   useEffect(() => {
     async function load() {
@@ -875,6 +1011,9 @@ export default function DashboardPage() {
             </Link>
           </div>
 
+          {/* Actualités Section */}
+          <NewsSection onArticleClick={setActiveArticleId} />
+
           <p className="text-[11px] text-text-secondary text-center px-2 leading-relaxed">
             Calculs indicatifs (TMI 30 % par défaut). Consultez un expert-comptable.
           </p>
@@ -889,6 +1028,14 @@ export default function DashboardPage() {
           rendement={rendementNet} projection={projection10ans}
           tmi={tmi}
           onClose={() => setActiveKpi(null)}
+        />
+      )}
+
+      {/* Article Sheet */}
+      {activeArticle && (
+        <ArticleSheet
+          article={activeArticle}
+          onClose={() => setActiveArticleId(null)}
         />
       )}
     </div>

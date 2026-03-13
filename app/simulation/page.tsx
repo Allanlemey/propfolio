@@ -303,6 +303,7 @@ type SavedSim = {
     price: number; apport: number; taux: number; duree: number;
     loyer: number; regime: string; revaluation: number;
     vacance: number; inflationLoyers: number; listingUrl?: string; dpe?: string;
+    notaire?: number;
   };
   results: {
     cashflow: number; rendementBrut: number; rendementNet: number;
@@ -430,6 +431,7 @@ export default function SimulationPage() {
   const [taux, setTaux] = useState(3.8);
   const [duree, setDuree] = useState(20);
   const [loyer, setLoyer] = useState(650);
+  const [notaire, setNotaire] = useState(120000 * 0.08);
   const [regime, setRegime] = useState("LMNP micro-BIC");
 
   // Hypotheses
@@ -440,6 +442,11 @@ export default function SimulationPage() {
   // Listing URL & DPE
   const [listingUrl, setListingUrl] = useState("");
   const [dpe, setDpe] = useState("");
+
+  // Auto-calc notaire on price change
+  useEffect(() => {
+    setNotaire(Math.round(price * 0.08));
+  }, [price]);
 
   // Simulation name
   const [simName, setSimName] = useState("");
@@ -472,6 +479,7 @@ export default function SimulationPage() {
     setTaux(s.params.taux);
     setDuree(s.params.duree);
     setLoyer(s.params.loyer);
+    setNotaire(s.params.notaire ?? Math.round(s.params.price * 0.08));
     setRegime(s.params.regime);
     setRevaluation(s.params.revaluation ?? 2);
     setVacance(s.params.vacance ?? 4);
@@ -495,8 +503,9 @@ export default function SimulationPage() {
 
   // ── Derived calculations ─────────────────────────────────────
 
-  const effectiveApport = Math.min(apport, price);
-  const principal = Math.max(0, price - effectiveApport);
+  const totalAcquisition = price + notaire;
+  const effectiveApport = Math.min(apport, totalAcquisition);
+  const principal = Math.max(0, totalAcquisition - effectiveApport);
   const mp = calcMonthlyPayment(principal, taux, duree);
 
   const annualRent = loyer * 12;
@@ -537,7 +546,7 @@ export default function SimulationPage() {
 
   function resetForm() {
     setPrice(120000); setApport(10000); setTaux(3.8); setDuree(20);
-    setLoyer(650); setRegime("LMNP micro-BIC"); setRevaluation(2);
+    setLoyer(650); setNotaire(120000 * 0.08); setRegime("LMNP micro-BIC"); setRevaluation(2);
     setVacance(4); setInflationLoyers(1.8); setListingUrl(""); setDpe(""); setSimName("");
     setActiveSimId(null);
     simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -566,6 +575,7 @@ export default function SimulationPage() {
         inflationLoyers,
         listingUrl: listingUrl.trim() || undefined,
         dpe: dpe || undefined,
+        notaire,
       },
       results: {
         cashflow: Math.round(cashflow),
@@ -669,6 +679,15 @@ export default function SimulationPage() {
           step={10}
           onChange={setLoyer}
           fv={(v) => `${v} €/mois`}
+        />
+        <Slider
+          label="Frais de notaire"
+          value={notaire}
+          min={0}
+          max={50000}
+          step={100}
+          onChange={setNotaire}
+          fv={(v) => `${fmt(v)} €`}
         />
 
         {/* URL annonce */}
