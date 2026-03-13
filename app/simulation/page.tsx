@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useUserTmi } from "@/hooks/use-user-tmi";
-import { Loader2, Check, TrendingUp, AlertTriangle, BookOpen, Trash2, ChevronRight, ExternalLink, Plus, Pencil } from "lucide-react";
+import { Loader2, Check, TrendingUp, AlertTriangle, BookOpen, Trash2, ChevronRight, ExternalLink, Plus, Pencil, Download, Printer } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import {
   calcMonthlyPayment,
   calcRemainingCapital,
   calcMonthlyTax,
 } from "@/lib/calculations";
-import { FileDown } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -304,7 +305,7 @@ type SavedSim = {
     price: number; apport: number; taux: number; duree: number;
     loyer: number; regime: string; revaluation: number;
     vacance: number; inflationLoyers: number; listingUrl?: string; dpe?: string;
-    notaire?: number;
+    notaire?: number; travaux?: number;
   };
   results: {
     cashflow: number; rendementBrut: number; rendementNet: number;
@@ -434,6 +435,12 @@ export default function SimulationPage() {
   const [loyer, setLoyer] = useState(650);
   const [notaire, setNotaire] = useState(120000 * 0.08);
   const [regime, setRegime] = useState("LMNP micro-BIC");
+  const [travaux, setTravaux] = useState(0);
+
+  // PDF Preview State
+  const [showPreview, setShowPreview] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   // Hypotheses
   const [revaluation, setRevaluation] = useState(2);
@@ -487,6 +494,7 @@ export default function SimulationPage() {
     setInflationLoyers(s.params.inflationLoyers ?? 1.8);
     setListingUrl(s.params.listingUrl ?? "");
     setDpe(s.params.dpe ?? "");
+    setTravaux(s.params.travaux ?? 0);
     setSimName(s.name);
     setActiveSimId(s.id);
     simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -504,7 +512,7 @@ export default function SimulationPage() {
 
   // ── Derived calculations ─────────────────────────────────────
 
-  const totalAcquisition = price + notaire;
+  const totalAcquisition = price + notaire + travaux;
   const effectiveApport = Math.min(apport, totalAcquisition);
   const principal = Math.max(0, totalAcquisition - effectiveApport);
   const mp = calcMonthlyPayment(principal, taux, duree);
@@ -514,11 +522,13 @@ export default function SimulationPage() {
   const annualCopro = 600;
   const annualPno = 150;
   const annualGli = annualRent * 0.025;
-  const annualTravaux = 300;
+  const annualTravauxProvision = 300;
   const annualCharges =
-    annualTaxeFonciere + annualCopro + annualPno + annualGli + annualTravaux;
+    annualTaxeFonciere + annualCopro + annualPno + annualGli + annualTravauxProvision;
   const annualInterest = principal * (taux / 100);
-  const amortissement = price * 0.025;
+  
+  // Amortissement calculation: 80% of property over 20 years (4%) + 10% of works
+  const amortissement = (price * 0.04) + (travaux * 0.1);
 
   const monthlyTax = calcMonthlyTax(
     regime,
@@ -548,7 +558,7 @@ export default function SimulationPage() {
   function resetForm() {
     setPrice(120000); setApport(10000); setTaux(3.8); setDuree(20);
     setLoyer(650); setNotaire(120000 * 0.08); setRegime("LMNP micro-BIC"); setRevaluation(2);
-    setVacance(4); setInflationLoyers(1.8); setListingUrl(""); setDpe(""); setSimName("");
+    setVacance(4); setInflationLoyers(1.8); setListingUrl(""); setDpe(""); setSimName(""); setTravaux(0);
     setActiveSimId(null);
     simulatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -577,6 +587,7 @@ export default function SimulationPage() {
         listingUrl: listingUrl.trim() || undefined,
         dpe: dpe || undefined,
         notaire,
+        travaux,
       },
       results: {
         cashflow: Math.round(cashflow),
@@ -612,16 +623,49 @@ export default function SimulationPage() {
     setTimeout(() => setSaved(false), 3000);
   }
 
-  function handleDownloadPDF() {
-    window.print();
+  async function handleActualDownload() {
+    if (!reportRef.current) return;
+    setIsDownloading(true);
+    try {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      
+      const safeName = (simName || "simulation")
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase();
+      
+      pdf.save(`${safeName}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────
 
   return (
-    <div className="px-4 pt-5 pb-8 max-w-2xl mx-auto space-y-5">
+    <>
+      <div className="px-4 pt-5 pb-8 max-w-2xl mx-auto space-y-5 no-print">
       {/* Header */}
-      <div className="no-print">
+      <div>
         <h1 className="text-xl font-bold text-text leading-tight">
           Simuler une acquisition
         </h1>
@@ -631,17 +675,15 @@ export default function SimulationPage() {
       </div>
 
       {/* Saved simulations */}
-      <div className="no-print">
-        <SimList
-          sims={savedSims}
-          activeId={activeSimId}
-          onLoad={loadSim}
-          onDelete={deleteSim}
-        />
-      </div>
+      <SimList
+        sims={savedSims}
+        activeId={activeSimId}
+        onLoad={loadSim}
+        onDelete={deleteSim}
+      />
 
       {/* Inputs */}
-      <div ref={simulatorRef} className="bg-card rounded-2xl p-4 border border-border space-y-5 no-print">
+      <div ref={simulatorRef} className="bg-card rounded-2xl p-4 border border-border space-y-5">
         <Slider
           label="Prix du bien"
           value={price}
@@ -694,6 +736,15 @@ export default function SimulationPage() {
           max={50000}
           step={100}
           onChange={setNotaire}
+          fv={(v) => `${fmt(v)} €`}
+        />
+        <Slider
+          label="Estimation travaux"
+          value={travaux}
+          min={0}
+          max={200000}
+          step={1000}
+          onChange={setTravaux}
           fv={(v) => `${fmt(v)} €`}
         />
 
@@ -768,7 +819,7 @@ export default function SimulationPage() {
 
       {/* Hero cashflow */}
       <div
-        className={`rounded-2xl p-6 border no-print ${
+        className={`rounded-2xl p-6 border ${
           cfPositive
             ? "bg-green/5 border-green/20"
             : "bg-red/5 border-red/20"
@@ -802,7 +853,7 @@ export default function SimulationPage() {
       </div>
 
       {/* 4 KPI cards */}
-      <div className="grid grid-cols-2 gap-3 no-print">
+      <div className="grid grid-cols-2 gap-3">
         {[
           {
             label: "Rendement brut",
@@ -841,7 +892,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Projection chart */}
-      <div className="bg-card rounded-2xl p-4 border border-border no-print">
+      <div className="bg-card rounded-2xl p-4 border border-border">
         <p className="text-sm font-semibold text-text mb-0.5">
           Projection patrimoine net — 10 ans
         </p>
@@ -876,7 +927,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Hypotheses */}
-      <div className="bg-card rounded-2xl p-4 border border-border no-print">
+      <div className="bg-card rounded-2xl p-4 border border-border">
         <p className="text-sm font-semibold text-text mb-4">Hypothèses</p>
         <div className="space-y-4">
           <Stepper
@@ -910,7 +961,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Disclaimer */}
-      <div className="flex gap-3 p-4 bg-[#FBBF24]/5 border border-[#FBBF24]/20 rounded-xl no-print">
+      <div className="flex gap-3 p-4 bg-[#FBBF24]/5 border border-[#FBBF24]/20 rounded-xl">
         <AlertTriangle
           size={16}
           className="text-[#FBBF24] shrink-0 mt-0.5"
@@ -922,7 +973,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Save */}
-      <div className="space-y-3 no-print">
+      <div className="space-y-3">
         {/* Nom de la simulation */}
         <div className="relative">
           <Pencil size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
@@ -976,106 +1027,347 @@ export default function SimulationPage() {
 
         <button
           type="button"
-          onClick={handleDownloadPDF}
-          className="w-full py-3 rounded-xl text-xs font-bold text-accent border border-accent/20 bg-accent/5 flex items-center justify-center gap-2 hover:bg-accent/10 transition-all active:scale-[0.99] no-print"
+          onClick={() => setShowPreview(true)}
+          className="w-full py-3.5 rounded-xl text-sm font-bold text-accent border border-accent/20 bg-accent/5 flex items-center justify-center gap-2 hover:bg-accent/10 transition-all active:scale-[0.99] no-print"
         >
-          <FileDown size={14} />
-          Télécharger le rapport simulation (PDF)
+          <TrendingUp size={15} />
+          Télécharger le rapport de simulation (PDF)
         </button>
       </div>
-
-      {/* Report part for printing only */}
-      <div className="hidden print-only">
-        <PDFReport 
-           price={price} notaire={notaire} apport={effectiveApport} 
-           taux={taux} duree={duree} loyer={loyer} cashflow={cashflow}
-           rendementBrut={rendementBrut} rendementNet={rendementNet}
-           monthlyTax={monthlyTax} mp={mp} regime={regime}
-           name={simName || `Simulation ${fmtK(price)}`}
-        />
-      </div>
     </div>
+
+    {/* Modal d'aperçu */}
+      {showPreview && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black/60 backdrop-blur-sm print:relative print:z-0 print:bg-white print:backdrop-blur-none print:h-auto print:block">
+          <div className="flex items-center justify-between p-4 bg-surface border-b border-border shadow-md no-print">
+            <h3 className="font-bold text-lg">Aperçu du rapport</h3>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="px-4 py-2 rounded-lg text-sm font-semibold border border-border text-text-secondary hover:text-text"
+              >
+                Fermer
+              </button>
+              <button
+                onClick={handleActualDownload}
+                disabled={isDownloading}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-bg border border-border text-text hover:border-accent/40 flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                {isDownloading ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Download size={15} />
+                )}
+                Télécharger
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-6 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:opacity-90 shadow-lg shadow-accent/20"
+              >
+                <Printer size={15} className="mr-2" />
+                Imprimer
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-4 md:p-10 flex justify-center bg-bg/50 print:bg-white print:p-0 print:overflow-visible print:block">
+            <div className="w-full max-w-[21cm] shadow-2xl origin-top transition-transform print:shadow-none print:max-w-none print:transform-none" ref={reportRef}>
+              <PDFReport 
+                 price={price} notaire={notaire} apport={effectiveApport} 
+                 taux={taux} duree={duree} loyer={loyer} cashflow={cashflow}
+                 rendementBrut={rendementBrut} rendementNet={rendementNet}
+                 monthlyTax={monthlyTax} mp={mp} regime={regime}
+                 name={simName || `Simulation ${fmtK(price)}`}
+                 revaluation={revaluation}
+                 vacance={vacance}
+                 inflationLoyers={inflationLoyers}
+                 dpe={dpe}
+                 listingUrl={listingUrl}
+                 tmi={tmi}
+                 travaux={travaux}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-// ── PDF Report Component (Print Only) ─────────────────────────
+// ── PDF Report Component (Modern & Premium) ───────────────────
 
 function PDFReport({ 
   price, notaire, apport, taux, duree, loyer, 
-  cashflow, rendementBrut, rendementNet, monthlyTax, mp, regime, name 
+  cashflow, rendementBrut, rendementNet, monthlyTax, mp, regime, name,
+  revaluation, vacance, inflationLoyers, dpe, listingUrl, tmi, travaux
 }: any) {
+  const totalAcquisition = price + notaire + travaux;
+  const principal = totalAcquisition - apport;
+  const cashflowAnnuel = cashflow * 12;
+  
+  // Amortissement calculation: 80% of property over 20 years (4% annual) + 10% of works over 10 years
+  const annualAmortissementBien = price * 0.04;
+  const annualAmortissementTravaux = travaux * 0.1; 
+  const totalAnnualAmortissement = annualAmortissementBien + annualAmortissementTravaux;
+  const monthlyAmortissement = totalAnnualAmortissement / 12;
+  
+  const annualChargesTotal = (price * 0.008) + 600 + 150 + (loyer * 12 * 0.025) + 300;
+  const annualInterest = principal * (taux / 100);
+  const totalAnnualDeductions = totalAnnualAmortissement + annualChargesTotal + annualInterest;
+  
+  // Financial Projection with Deficit Carryforward
+  const projectionYearsArr = Array.from({ length: 20 }, (_, i) => i + 1);
+  let accumulatedDeficit = 0;
+  
+  const fullProjection = projectionYearsArr.map(y => {
+    const lYear = (loyer * 12) * Math.pow(1 + (inflationLoyers || 1.8) / 100, y - 1);
+    const cYear = annualChargesTotal * Math.pow(1.015, y - 1);
+    const capStart = calcRemainingCapital(principal, taux, duree, y - 1);
+    const intYear = capStart * (taux / 100);
+    const amortPropertyYear = (y <= 20) ? annualAmortissementBien : 0;
+    const amortTravauxYear = (y <= 10) ? annualAmortissementTravaux : 0;
+    const currentAmort = amortPropertyYear + amortTravauxYear;
+    
+    const totalDeductionsYear = cYear + intYear + currentAmort;
+    const rawResult = lYear - totalDeductionsYear;
+    
+    let taxBase = 0;
+    if (rawResult > 0) {
+      const usedDeficit = Math.min(rawResult, accumulatedDeficit);
+      taxBase = rawResult - usedDeficit;
+      accumulatedDeficit -= usedDeficit;
+    } else {
+      accumulatedDeficit += Math.abs(rawResult);
+      taxBase = 0;
+    }
+    
+    const yearlyTax = regime.toLowerCase().includes("réel") 
+      ? taxBase * (tmi + 0.172)
+      : (lYear * (regime.toLowerCase().includes("micro-bic") ? 0.5 : 0.7)) * (tmi + 0.172);
+
+    return { y, lYear, totalDeductionsYear, taxBase, yearlyTax, accumulatedDeficit };
+  });
+
+  const displayProjection = fullProjection.filter(p => [1, 5, 10, 15, 20].includes(p.y));
+  const tmiPct = Math.round(tmi * 100);
+  const isLMNPReel = regime.toLowerCase().includes("réel");
+
   return (
-    <div className="p-10 space-y-8 bg-white text-black min-h-screen">
-      <div className="flex justify-between items-start border-b-2 border-accent pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-accent">Propfolio</h1>
-          <p className="text-sm text-gray-500">Rapport d&apos;investissement immobilier</p>
+    <div className="bg-white print:block overflow-hidden">
+      {/* Page 1: Analyse Financière */}
+      <div className="p-10 space-y-8 bg-white text-slate-800 h-[29.7cm] relative flex flex-col font-sans border border-slate-100 print:border-none print:shadow-none print:m-0 print:overflow-hidden">
+        {/* Header Accent */}
+        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-indigo-600 via-purple-500 to-emerald-400"></div>
+
+        {/* Header Section */}
+        <div className="flex justify-between items-start pt-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg">P</div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Propfolio <span className="text-indigo-600">Expert</span></h1>
+            </div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString("fr-FR", { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+          <div className="text-right">
+            <h2 className="text-xl font-bold text-slate-900 leading-tight">{name}</h2>
+            <p className="text-sm text-slate-500 font-medium">Analyse Financière Prévisionnelle</p>
+            {listingUrl && (
+              <p className="text-[10px] text-indigo-500 font-mono mt-1 underline truncate max-w-[250px]">{listingUrl}</p>
+            )}
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-xl font-bold">{name}</p>
-          <p className="text-sm text-gray-500">{new Date().toLocaleDateString("fr-FR")}</p>
+
+        {/* Hero Stats */}
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Cashflow Mensuel", value: `${cashflow >= 0 ? "+" : "−"}${fmt(Math.abs(cashflow))} €`, color: cashflow >= 0 ? "text-emerald-600" : "text-rose-600", bg: cashflow >= 0 ? "bg-emerald-50" : "bg-rose-50" },
+            { label: "Rendement Net", value: `${rendementNet.toFixed(2)} %`, color: "text-indigo-600", bg: "bg-indigo-50" },
+            { label: "Apport", value: `${fmt(apport)} €`, color: "text-slate-700", bg: "bg-slate-50" },
+            { label: "DPE", value: dpe || "N/A", color: "text-slate-700", bg: "bg-slate-50" }
+          ].map((stat, i) => (
+            <div key={i} className={`${stat.bg} p-4 rounded-2xl border border-white/50 shadow-sm`}>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{stat.label}</p>
+              <p className={`text-xl font-black ${stat.color}`}>{stat.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Columns */}
+        <div className="grid grid-cols-12 gap-8 items-stretch flex-1">
+          {/* Left Column */}
+          <div className="col-span-7 space-y-6">
+            <section className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 space-y-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                Structure de l&apos;Acquisition
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm"><span className="text-slate-500">Prix d&apos;achat</span><span className="font-semibold">{fmt(price)} €</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">Frais de notaire</span><span className="font-semibold">{fmt(notaire)} €</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">Travaux</span><span className="font-semibold">{fmt(travaux)} €</span></div>
+                <div className="flex justify-between pt-2 border-t border-slate-200"><span className="font-bold">Total Projet</span><span className="font-black text-indigo-600">{fmt(totalAcquisition)} €</span></div>
+              </div>
+            </section>
+
+            <section className="bg-white p-5 rounded-2xl border-2 border-indigo-100 space-y-4 shadow-sm">
+              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                Analyse Amortissable
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[9px] text-slate-400 font-bold uppercase">Immobilier (80%)</p>
+                  <p className="text-sm font-black text-slate-700">{fmt(price * 0.8)} €</p>
+                  <p className="text-[8px] text-slate-400 italic">Sur ~20 ans (5%/an)</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] text-slate-400 font-bold uppercase">Travaux & Mobilier</p>
+                  <p className="text-sm font-black text-slate-700">{fmt(travaux)} €</p>
+                  <p className="text-[8px] text-slate-400 italic">Sur ~10 ans (10%/an)</p>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                <p className="text-xs font-bold">Dotation Annuelle</p>
+                <p className="text-lg font-black text-indigo-600">{fmt(totalAnnualAmortissement)} €</p>
+              </div>
+            </section>
+
+            <section className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 space-y-4">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Bilan Fiscal Annuel
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm items-center">
+                  <span className="text-slate-500 font-medium">Recettes annuelles</span>
+                  <span className="font-black text-emerald-600">+{fmt(loyer * 12)} €</span>
+                </div>
+                <div className="space-y-2 p-3 bg-white/50 rounded-xl border border-slate-100">
+                  <div className="flex justify-between text-[10px]"><span className="text-slate-400">- Charges & Taxes</span><span className="font-medium text-rose-400">-{fmt(annualChargesTotal)} €</span></div>
+                  <div className="flex justify-between text-[10px]"><span className="text-slate-400">- Intérêts (Y1)</span><span className="font-medium text-rose-400">-{fmt(annualInterest)} €</span></div>
+                  <div className="flex justify-between text-[10px] font-bold pt-1 border-t border-slate-100/50"><span className="text-slate-400">- Amortissements</span><span className="text-indigo-500">-{fmt(totalAnnualAmortissement)} €</span></div>
+                </div>
+                <div className="flex justify-between text-sm py-2 px-3 bg-slate-900 rounded-xl">
+                  <span className="text-slate-400 text-[10px] font-bold uppercase">Résultat Fiscal</span>
+                  <span className={`font-black ${loyer * 12 - totalAnnualDeductions > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                    {loyer * 12 - totalAnnualDeductions > 0 
+                      ? `${fmt(loyer * 12 - totalAnnualDeductions)} €` 
+                      : `DÉFICIT (${fmt(Math.abs(loyer * 12 - totalAnnualDeductions))} €)`
+                    }
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right Column */}
+          <div className="col-span-5 space-y-6">
+            <section className="bg-slate-900 p-5 rounded-2xl text-white shadow-xl space-y-5">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Exploitation</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-slate-400 text-xs">Loyer mensuel HC</span>
+                  <span className="text-2xl font-black">{fmt(loyer)} €</span>
+                </div>
+                <div className="space-y-3 pt-4 border-t border-white/10">
+                  <div className="flex justify-between text-[10px]"><span className="text-slate-400">Rendement Brut</span><span className="text-emerald-400 font-bold">{rendementBrut.toFixed(2)} %</span></div>
+                  <div className="flex justify-between text-[10px]"><span className="text-slate-400">Rendement Net</span><span className="text-slate-200 font-bold">{rendementNet.toFixed(2)} %</span></div>
+                  <div className="pt-2">
+                    <div className="flex justify-between text-[10px] items-center">
+                      <span className="text-slate-400">Impôt Mensuel</span>
+                      <span className={`font-bold ${Math.round(monthlyTax) > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                        {Math.round(monthlyTax) > 0 ? `${fmt(monthlyTax)} €/m` : "0 € (Défiscalisé)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 space-y-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Financement</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">Emprunt</span><span>{fmt(principal)} €</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Taux</span><span>{taux} %</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Durée</span><span>{duree} ans</span></div>
+                <div className="flex justify-between pt-2 border-t border-slate-200"><span className="font-bold">Mensualité</span><span className="font-black text-rose-500">{fmt(mp)} €/m</span></div>
+              </div>
+            </section>
+
+            <div className="p-5 rounded-3xl border-2 border-dashed border-slate-100 text-center space-y-2">
+               <TrendingUp size={24} className="mx-auto text-indigo-600 mb-1" />
+               <p className="text-[10px] font-bold text-slate-400 uppercase">Valeur à 10 ans</p>
+               <p className="text-lg font-black text-slate-900">+{revaluation}% <span className="text-slate-400 font-normal">/an</span></p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer P1 */}
+        <div className="pt-6 border-t border-slate-100 flex justify-between items-end opacity-60">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-900 uppercase">Propfolio Expert Report</p>
+            <p className="text-[7px] text-slate-400 max-w-xs leading-tight">Ce document est une projection basée sur vos hypothèses. Pas de valeur contractuelle.</p>
+          </div>
+          <p className="text-xs font-black text-slate-300">PAGE 1/2</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-10">
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold border-b border-gray-200 pb-2">Acquisition</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between"><span>Prix du bien</span><span className="font-bold">{fmt(price)} €</span></div>
-            <div className="flex justify-between"><span>Frais de notaire</span><span className="font-bold">{fmt(notaire)} €</span></div>
-            <div className="flex justify-between"><span>Apport personnel</span><span className="font-bold">{fmt(apport)} €</span></div>
-            <div className="flex justify-between border-t border-gray-100 pt-2">
-              <span className="font-bold">Total acquisition</span>
-              <span className="font-bold text-accent">{fmt(price + notaire)} €</span>
-            </div>
+      {/* Page 2: Projection Table */}
+      <div className="p-10 space-y-8 bg-white text-slate-800 h-[29.7cm] relative flex flex-col font-sans print:m-0 break-before-page print:overflow-hidden">
+        <div className="flex justify-between items-end mb-4 pt-10">
+          <h3 className="text-xl font-black text-slate-900 tracking-tight">Analyse Prospective <span className="text-indigo-600">20 ans</span></h3>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{name}</p>
+        </div>
+
+        <section className="space-y-4 flex-1">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 shadow-sm">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Année</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Loyers</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Déductions</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Déficit Reporté</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Impôt Final</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {displayProjection.map((p, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-900 text-sm">Année {p.y}</td>
+                    <td className="px-6 py-4 text-right text-emerald-600 font-bold text-sm">{fmt(p.lYear)} €</td>
+                    <td className="px-6 py-4 text-right text-rose-500/80 text-sm">-{fmt(p.totalDeductionsYear)} €</td>
+                    <td className="px-6 py-4 text-right text-indigo-600 font-bold text-sm">{p.accumulatedDeficit > 0 ? `${fmt(p.accumulatedDeficit)} €` : "0 €"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${p.yearlyTax > 0 ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"}`}>
+                        {p.yearlyTax > 0 ? `${fmt(p.yearlyTax)} €` : "0 €"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="p-5 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+            <h4 className="text-xs font-black text-indigo-600 uppercase mb-2">Note sur le Report de Déficit</h4>
+            <p className="text-[10px] text-slate-500 leading-relaxed italic">
+              Le régime LMNP Réel permet de reporter indéfiniment vos déficits (amortissements non consommés). 
+              Le tableau ci-dessus simule cette "réserve fiscale" qui annule votre impôt tant qu&apos;elle n&apos;est pas épuisée.
+            </p>
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold border-b border-gray-200 pb-2">Financement</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between"><span>Montant emprunté</span><span className="font-bold">{fmt(price + notaire - apport)} €</span></div>
-            <div className="flex justify-between"><span>Taux d&apos;intérêt</span><span className="font-bold">{taux} %</span></div>
-            <div className="flex justify-between"><span>Durée</span><span className="font-bold">{duree} ans</span></div>
-            <div className="flex justify-between border-t border-gray-100 pt-2">
-              <span className="font-bold text-red">Mensualité (crédit)</span>
-              <span className="font-bold text-red">{fmt(mp)} €</span>
-            </div>
+        {/* Footer P2 */}
+        <div className="pt-6 border-t border-slate-100 flex justify-between items-end opacity-60">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-900 uppercase">Propfolio Expert Report</p>
+            <p className="text-[7px] text-slate-400 max-w-xs leading-tight">Généré le {new Date().toLocaleDateString()}. Document d&apos;aide à la décision uniquement.</p>
           </div>
-        </section>
+          <div className="text-right flex items-center gap-4">
+             <div className="px-3 py-1 bg-slate-100 text-[9px] font-black rounded-lg">ID_{Math.random().toString(36).substring(7).toUpperCase()}</div>
+             <p className="text-xs font-black text-slate-300">PAGE 2/2</p>
+          </div>
+        </div>
       </div>
-
-      <section className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-        <h2 className="text-lg font-bold mb-4">Rentabilité & Cashflow</h2>
-        <div className="grid grid-cols-3 gap-6 text-center">
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Rendement Brut</p>
-            <p className="text-2xl font-bold">{rendementBrut.toFixed(2)} %</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Rendement Net</p>
-            <p className="text-2xl font-bold">{rendementNet.toFixed(2)} %</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fiscalité ({regime})</p>
-            <p className="text-2xl font-bold">{fmt(monthlyTax)} €/mois</p>
-          </div>
-        </div>
-        
-        <div className="mt-8 pt-8 border-t border-gray-200 flex justify-between items-center">
-          <div>
-            <p className="text-sm font-bold text-gray-500 uppercase">Cashflow net mensuel</p>
-            <p className={`text-4xl font-bold ${cashflow >= 0 ? "text-green-600" : "text-red-600"}`}>
-              {cashflow >= 0 ? "+" : "-"}{fmt(cashflow)} €
-            </p>
-          </div>
-          <div className="text-right max-w-xs">
-            <p className="text-[10px] text-gray-400 italic">
-              Ce document est généré par Propfolio. Les calculs sont fournis à titre indicatif et ne constituent pas un engagement contractuel.
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

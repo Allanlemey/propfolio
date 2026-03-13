@@ -95,8 +95,8 @@ export function calcMonthlyTax(
       return (annualRent * 0.5 * (TMI + PS)) / 12;
     case "LMNP réel":
     case "LMNP réel simplifié": {
-      const taxable = Math.max(0, annualRent - annualCharges - amortissement);
-      return (taxable * PS) / 12;
+      const taxable = Math.max(0, annualRent - annualCharges - annualInterest - amortissement);
+      return (taxable * (TMI + PS)) / 12;
     }
     case "Nu micro-foncier":
     case "Location nue micro-foncier":
