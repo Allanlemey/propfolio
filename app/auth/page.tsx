@@ -433,7 +433,7 @@ export default function AuthPage() {
                 onClick={() => switchTab("register")}
                 className="text-accent hover:underline font-medium"
               >
-                S'inscrire
+                S&apos;inscrire
               </button>
             </>
           ) : (

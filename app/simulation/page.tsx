@@ -48,8 +48,8 @@ function Slider({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-text-secondary">{label}</span>
-        <span className="font-mono font-bold text-sm text-accent">
+        <span className="text-sm font-medium text-text-secondary">{label}</span>
+        <span className="font-mono font-black text-sm text-accent">
           {fv(value)}
         </span>
       </div>
@@ -99,22 +99,22 @@ function Stepper({
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-text-secondary">{label}</span>
+      <span className="text-sm font-medium text-text-secondary">{label}</span>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={dec}
-          className="w-7 h-7 rounded-lg bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-text hover:border-accent/40 transition-colors font-bold text-base leading-none"
+          className="w-7 h-7 rounded-xl bg-bg border border-border/60 flex items-center justify-center text-text-secondary hover:text-text hover:border-accent/40 transition-colors font-black text-base leading-none shadow-sm"
         >
           −
         </button>
-        <span className="font-mono text-sm font-semibold text-text w-14 text-center">
+        <span className="font-mono text-sm font-black text-text w-14 text-center">
           {value} {suffix}
         </span>
         <button
           type="button"
           onClick={inc}
-          className="w-7 h-7 rounded-lg bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-text hover:border-accent/40 transition-colors font-bold text-base leading-none"
+          className="w-7 h-7 rounded-xl bg-bg border border-border/60 flex items-center justify-center text-text-secondary hover:text-text hover:border-accent/40 transition-colors font-black text-base leading-none shadow-sm"
         >
           +
         </button>
@@ -326,12 +326,12 @@ function SimList({
   if (sims.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-text flex items-center gap-2">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <p className="text-sm font-black text-text flex items-center gap-2">
           <BookOpen size={14} className="text-accent" />
           Simulations sauvegardées
-          <span className="font-mono text-xs font-normal text-text-secondary bg-bg border border-border rounded-full px-2 py-0.5">
+          <span className="font-mono text-xs font-bold text-text-secondary bg-bg border border-border rounded-full px-2 py-0.5">
             {sims.length}
           </span>
         </p>
@@ -346,31 +346,32 @@ function SimList({
           return (
             <div
               key={s.id}
-              className={`snap-start shrink-0 w-52 rounded-2xl border p-3.5 transition-all ${
+              className={`snap-start shrink-0 w-52 rounded-[22px] border overflow-hidden relative p-3.5 transition-all shadow-sm ${
                 isActive
                   ? "border-accent/60 bg-accent/5 shadow-[0_0_0_1px_rgba(108,99,255,0.2)]"
-                  : "border-border bg-card hover:border-accent/30"
+                  : "border-border/60 bg-card hover:border-accent/30"
               }`}
             >
+              <div className={`absolute top-0 left-0 right-0 h-[3px] ${cfPos ? "bg-green" : "bg-red"} opacity-70`} />
               {/* Name + date */}
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <p className="text-xs font-semibold text-text leading-tight line-clamp-2">{s.name}</p>
-                <span className="text-[10px] text-text-secondary shrink-0">{date}</span>
+              <div className="flex items-start justify-between gap-1 mb-2 mt-1">
+                <p className="text-xs font-black text-text leading-tight line-clamp-2">{s.name}</p>
+                <span className="text-[10px] text-text-muted font-bold shrink-0">{date}</span>
               </div>
 
               {/* Results */}
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className={`font-mono text-base font-bold leading-tight ${cfPos ? "text-green" : "text-red"}`}>
+                  <p className={`font-mono text-base font-black leading-tight ${cfPos ? "text-green" : "text-red"}`}>
                     {cfPos ? "+" : "−"}{fmt(s.results.cashflow)} €
                   </p>
-                  <p className="text-[10px] text-text-secondary">cashflow/mois</p>
+                  <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">cashflow/mois</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-sm font-bold text-[#FBBF24]">
+                  <p className="font-mono text-sm font-black text-[#FBBF24]">
                     {s.results.rendementNet.toFixed(1)} %
                   </p>
-                  <p className="text-[10px] text-text-secondary">rendement net</p>
+                  <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">rendement net</p>
                 </div>
               </div>
 
@@ -440,6 +441,7 @@ export default function SimulationPage() {
   // PDF Preview State
   const [showPreview, setShowPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [pdfZoom, setPdfZoom] = useState(1);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Hypotheses
@@ -480,6 +482,17 @@ export default function SimulationPage() {
     }
     loadSims();
   }, []);
+
+  useEffect(() => {
+    if (!showPreview) return;
+    const compute = () => {
+      const w = window.innerWidth - 32;
+      setPdfZoom(w < 794 ? w / 794 : 1);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, [showPreview]);
 
   function loadSim(s: SavedSim) {
     setPrice(s.params.price);
@@ -663,15 +676,23 @@ export default function SimulationPage() {
 
   return (
     <>
-      <div className="px-4 pt-5 pb-8 max-w-2xl mx-auto space-y-5 no-print">
+      <div className="relative min-h-screen bg-bg no-print overflow-x-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 inset-x-0 h-[400px] bg-gradient-to-b from-accent/5 to-transparent pointer-events-none" />
+      <div className="absolute top-20 right-[-10%] w-[40%] h-[20%] bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="relative px-4 pt-8 pb-12 max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-text leading-tight">
-          Simuler une acquisition
-        </h1>
-        <p className="text-text-secondary text-sm mt-0.5">
-          Testez un investissement avant d&apos;acheter
-        </p>
+      <div className="flex items-end justify-between px-1">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black text-text tracking-tight leading-none bg-gradient-to-r from-text to-text-secondary bg-clip-text text-transparent">
+            Simuler une acquisition
+          </h1>
+          <div className="text-text-muted text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            Simulation temps réel
+          </div>
+        </div>
       </div>
 
       {/* Saved simulations */}
@@ -683,7 +704,9 @@ export default function SimulationPage() {
       />
 
       {/* Inputs */}
-      <div ref={simulatorRef} className="bg-card rounded-2xl p-4 border border-border space-y-5">
+      <div ref={simulatorRef} className="bg-card rounded-[26px] border border-border/60 overflow-hidden shadow-sm relative">
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-accent opacity-80" />
+        <div className="p-5 space-y-5">
         <Slider
           label="Prix du bien"
           value={price}
@@ -750,8 +773,8 @@ export default function SimulationPage() {
 
         {/* URL annonce */}
         <div className="space-y-2">
-          <label className="text-sm text-text-secondary" htmlFor="listing-url">
-            URL de l&apos;annonce <span className="text-text-muted text-xs">(optionnel)</span>
+          <label className="text-sm font-medium text-text-secondary" htmlFor="listing-url">
+            URL de l&apos;annonce <span className="text-text-muted text-xs font-bold">(optionnel)</span>
           </label>
           <div className="relative">
             <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
@@ -768,7 +791,7 @@ export default function SimulationPage() {
 
         {/* DPE */}
         <div className="space-y-2">
-          <p className="text-sm text-text-secondary">Classe énergie (DPE)</p>
+          <p className="text-sm font-medium text-text-secondary">Classe énergie (DPE)</p>
           <div className="flex gap-1.5">
             {(["A", "B", "C", "D", "E", "F", "G"] as const).map(letter => {
               const selected = dpe === letter;
@@ -797,7 +820,7 @@ export default function SimulationPage() {
 
         {/* Régime fiscal */}
         <div className="space-y-2">
-          <p className="text-sm text-text-secondary">Régime fiscal</p>
+          <p className="text-sm font-medium text-text-secondary">Régime fiscal</p>
           <div className="flex flex-wrap gap-2">
             {REGIMES.map((r) => (
               <button
@@ -815,34 +838,36 @@ export default function SimulationPage() {
             ))}
           </div>
         </div>
+        </div>
       </div>
 
       {/* Hero cashflow */}
       <div
-        className={`rounded-2xl p-6 border ${
+        className={`rounded-[26px] p-6 border overflow-hidden relative shadow-sm ${
           cfPositive
             ? "bg-green/5 border-green/20"
             : "bg-red/5 border-red/20"
         }`}
       >
+        <div className={`absolute top-0 left-0 right-0 h-[3px] ${cfPositive ? "bg-green" : "bg-red"} opacity-80`} />
         <p
-          className={`text-xs font-semibold uppercase tracking-widest mb-2 ${
+          className={`text-xs font-black uppercase tracking-widest mb-2 ${
             cfPositive ? "text-green" : "text-red"
           }`}
         >
           Cashflow net mensuel estimé
         </p>
         <p
-          className={`font-mono font-bold leading-tight mb-2 ${
+          className={`font-mono font-black leading-tight mb-2 ${
             cfPositive ? "text-green" : "text-red"
           }`}
-          style={{ fontSize: 42 }}
+          style={{ fontSize: 48 }}
         >
           {cfPositive ? "+" : "−"}
           {fmt(cashflow)} €
         </p>
         <p
-          className={`text-sm ${
+          className={`text-sm font-medium ${
             cfPositive ? "text-green/80" : "text-red/80"
           }`}
         >
@@ -878,57 +903,63 @@ export default function SimulationPage() {
         ].map((kpi) => (
           <div
             key={kpi.label}
-            className="bg-card rounded-2xl p-4 border border-border"
+            className="bg-card rounded-[22px] p-4 border border-border/60 shadow-sm relative overflow-hidden"
           >
-            <p className="text-xs text-text-secondary uppercase tracking-wide mb-1 leading-tight">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-accent opacity-40" />
+            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-2 leading-tight">
               {kpi.label}
             </p>
-            <p className="font-mono font-bold text-xl text-text">
+            <p className="font-mono font-black text-xl text-text">
               {kpi.value}
             </p>
-            <p className="text-[10px] text-text-secondary mt-0.5">{kpi.sub}</p>
+            <p className="text-[10px] text-text-secondary mt-0.5 font-medium">{kpi.sub}</p>
           </div>
         ))}
       </div>
 
       {/* Projection chart */}
-      <div className="bg-card rounded-2xl p-4 border border-border">
-        <p className="text-sm font-semibold text-text mb-0.5">
+      <div className="bg-card rounded-[26px] border border-border/60 overflow-hidden shadow-sm relative">
+        <div className="absolute top-0 left-0 right-0 h-[3px] opacity-80" style={{ background: "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)" }} />
+        <div className="p-5">
+        <p className="text-sm font-black text-text mb-0.5">
           Projection patrimoine net — 10 ans
         </p>
-        <p className="text-[11px] text-text-secondary mb-3">
+        <p className="text-[11px] text-text-secondary mb-3 font-medium">
           Valeur bien revalorisée − capital restant dû
         </p>
         <ProjectionChart
           data={projection}
-          onSelectYear={(year, net) => {
+          onSelectYear={(year) => {
             const idx = projection.findIndex((p) => p.year === year);
             if (idx !== -1) setSelectedProjectionIndex(idx);
           }}
         />
         <div className="grid grid-cols-2 gap-3 mt-3">
-          <div className="bg-bg rounded-xl p-3 border border-border text-center">
-            <p className="text-[10px] text-text-secondary mb-1">
+          <div className="bg-bg rounded-2xl p-3 border border-border/40 text-center">
+            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">
               {selectedProjectionIndex === 0 ? "Aujourd'hui" : `Année ${projection[selectedProjectionIndex]?.year ?? 0}`}
             </p>
-            <p className="font-mono font-bold text-base text-text">
+            <p className="font-mono font-black text-base text-text">
               {fmtK(projection[selectedProjectionIndex]?.net ?? projection[0].net)}
             </p>
           </div>
-          <div className="bg-bg rounded-xl p-3 border border-border text-center">
-            <p className="text-[10px] text-text-secondary mb-1">
+          <div className="bg-bg rounded-2xl p-3 border border-border/40 text-center">
+            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">
               Dans 10 ans
             </p>
-            <p className="font-mono font-bold text-base text-accent">
+            <p className="font-mono font-black text-base text-accent">
               {fmtK(projection[10]?.net ?? 0)}
             </p>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Hypotheses */}
-      <div className="bg-card rounded-2xl p-4 border border-border">
-        <p className="text-sm font-semibold text-text mb-4">Hypothèses</p>
+      <div className="bg-card rounded-[26px] border border-border/60 overflow-hidden shadow-sm relative">
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#FBBF24] opacity-60" />
+        <div className="p-5">
+        <p className="text-sm font-black text-text mb-4">Hypothèses</p>
         <div className="space-y-4">
           <Stepper
             label="Revalorisation annuelle"
@@ -958,10 +989,11 @@ export default function SimulationPage() {
             suffix="%"
           />
         </div>
+        </div>
       </div>
 
       {/* Disclaimer */}
-      <div className="flex gap-3 p-4 bg-[#FBBF24]/5 border border-[#FBBF24]/20 rounded-xl">
+      <div className="flex gap-3 p-4 bg-[#FBBF24]/5 border border-[#FBBF24]/20 rounded-2xl">
         <AlertTriangle
           size={16}
           className="text-[#FBBF24] shrink-0 mt-0.5"
@@ -982,7 +1014,7 @@ export default function SimulationPage() {
             value={simName}
             onChange={(e) => setSimName(e.target.value)}
             placeholder={`Simulation ${fmtK(price)} — ${loyer} €/mois`}
-            className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-card border border-border text-sm text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-colors"
+            className="w-full pl-8 pr-3 py-3 rounded-2xl bg-card border border-border/60 text-sm font-medium text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-colors shadow-sm"
           />
         </div>
 
@@ -991,7 +1023,7 @@ export default function SimulationPage() {
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-3.5 rounded-xl text-sm font-semibold border border-border text-text-secondary hover:text-text hover:border-accent/40 flex items-center gap-2 transition-colors"
+              className="px-4 py-3.5 rounded-2xl text-sm font-black border border-border/60 text-text-secondary hover:text-text hover:border-accent/40 flex items-center gap-2 transition-colors shadow-sm"
             >
               <Plus size={14} />
               Nouvelle
@@ -1001,7 +1033,7 @@ export default function SimulationPage() {
             type="button"
             onClick={handleSave}
             disabled={saving || saved}
-            className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.98] transition-all"
+            className="flex-1 py-3.5 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.98] transition-all shadow-lg shadow-accent/25"
             style={{
               background: saved
                 ? "var(--green)"
@@ -1028,51 +1060,189 @@ export default function SimulationPage() {
         <button
           type="button"
           onClick={() => setShowPreview(true)}
-          className="w-full py-3.5 rounded-xl text-sm font-bold text-accent border border-accent/20 bg-accent/5 flex items-center justify-center gap-2 hover:bg-accent/10 transition-all active:scale-[0.99] no-print"
+          className="w-full py-3.5 rounded-2xl text-sm font-black text-accent border border-accent/20 bg-accent/5 flex items-center justify-center gap-2 hover:bg-accent/10 transition-all active:scale-[0.99] no-print"
         >
           <TrendingUp size={15} />
           Télécharger le rapport de simulation (PDF)
         </button>
+      </div>
       </div>
     </div>
 
     {/* Modal d'aperçu */}
       {showPreview && (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/60 backdrop-blur-sm print:relative print:z-0 print:bg-white print:backdrop-blur-none print:h-auto print:block">
-          <div className="flex items-center justify-between p-4 bg-surface border-b border-border shadow-md no-print">
-            <h3 className="font-bold text-lg">Aperçu du rapport</h3>
-            <div className="flex gap-3">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 md:p-4 bg-surface border-b border-border shadow-md no-print">
+            <h3 className="font-bold text-base md:text-lg">Rapport PDF</h3>
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowPreview(false)}
-                className="px-4 py-2 rounded-lg text-sm font-semibold border border-border text-text-secondary hover:text-text"
+                className="px-3 py-2 rounded-lg text-sm font-semibold border border-border text-text-secondary hover:text-text"
               >
-                Fermer
+                ✕
               </button>
               <button
                 onClick={handleActualDownload}
                 disabled={isDownloading}
-                className="px-4 py-2 rounded-lg text-sm font-semibold bg-bg border border-border text-text hover:border-accent/40 flex items-center gap-2 transition-all disabled:opacity-50"
+                className="px-3 py-2 rounded-lg text-sm font-semibold bg-accent text-white flex items-center gap-1.5 transition-all disabled:opacity-50"
               >
-                {isDownloading ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <Download size={15} />
-                )}
-                Télécharger
+                {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                <span className="hidden sm:inline">Télécharger</span>
               </button>
               <button
                 onClick={() => window.print()}
-                className="px-6 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:opacity-90 shadow-lg shadow-accent/20"
+                className="hidden md:flex px-3 py-2 rounded-lg text-sm font-semibold border border-border text-text items-center gap-1.5"
               >
-                <Printer size={15} className="mr-2" />
-                Imprimer
+                <Printer size={14} />
+                <span>Imprimer</span>
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-4 md:p-10 flex justify-center bg-bg/50 print:bg-white print:p-0 print:overflow-visible print:block">
-            <div className="w-full max-w-[21cm] shadow-2xl origin-top transition-transform print:shadow-none print:max-w-none print:transform-none" ref={reportRef}>
-              <PDFReport 
-                 price={price} notaire={notaire} apport={effectiveApport} 
+
+          {/* Mobile summary — visible on phones only */}
+          <div className="flex-1 overflow-auto md:hidden p-5 bg-bg space-y-4 no-print">
+            <div className="text-center space-y-1 pb-4 border-b border-border">
+              <p className="text-xs text-text-secondary uppercase tracking-widest font-bold">Analyse financière</p>
+              <p className="font-black text-lg text-text">{simName || `Simulation ${fmtK(price)}`}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Cashflow mensuel", value: `${cashflow >= 0 ? "+" : "−"}${fmt(Math.abs(cashflow))} €`, color: cashflow >= 0 ? "text-green" : "text-red" },
+                { label: "Rendement net", value: `${rendementNet.toFixed(2)} %`, color: "text-accent" },
+                { label: "Mensualité", value: `${fmt(mp)} €/m`, color: "text-text" },
+                { label: "Impôt mensuel", value: monthlyTax > 0 ? `${fmt(monthlyTax)} €/m` : "Défiscalisé", color: monthlyTax > 0 ? "text-red" : "text-green" },
+              ].map((s, i) => (
+                <div key={i} className="bg-card rounded-2xl p-4 border border-border">
+                  <p className="text-[11px] text-text-secondary font-medium mb-1">{s.label}</p>
+                  <p className={`font-black text-xl font-mono ${s.color}`}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border space-y-2.5">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Acquisition</p>
+              {[
+                ["Prix d'achat", `${fmt(price)} €`],
+                ["Frais notaire", `${fmt(notaire)} €`],
+                ["Travaux", `${fmt(travaux)} €`],
+                ["Apport", `${fmt(effectiveApport)} €`],
+                ["Emprunt", `${fmt(price + notaire + travaux - effectiveApport)} €`],
+              ].map(([l, v], i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-text-secondary">{l}</span>
+                  <span className="font-semibold font-mono">{v}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border space-y-2.5">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Crédit</p>
+              {[
+                ["Taux", `${taux} %`],
+                ["Durée", `${duree} ans`],
+                ["Régime fiscal", regime],
+              ].map(([l, v], i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-text-secondary">{l}</span>
+                  <span className="font-semibold">{v}</span>
+                </div>
+              ))}
+            </div>
+            {/* Projection 20 ans */}
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Analyse prospective 20 ans</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="px-3 py-2 text-left text-[11px] font-bold text-text-secondary">An</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-bold text-text-secondary">Loyers</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-bold text-text-secondary">Résultat fiscal</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-bold text-text-secondary">Impôt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const principal = price + notaire + travaux - effectiveApport;
+                      const annualAmortBien = price * 0.04;
+                      const annualAmortTravaux = travaux * 0.1;
+                      const annualCharges = (price * 0.008) + 600 + 150 + (loyer * 12 * 0.025) + 300;
+                      let deficit = 0;
+                      return [1, 5, 10, 15, 20].map(y => {
+                        const lYear = (loyer * 12) * Math.pow(1 + (inflationLoyers || 1.8) / 100, y - 1);
+                        const cYear = annualCharges * Math.pow(1.015, y - 1);
+                        const capStart = calcRemainingCapital(principal, taux, duree, y - 1);
+                        const intYear = capStart * (taux / 100);
+                        const amort = (y <= 20 ? annualAmortBien : 0) + (y <= 10 ? annualAmortTravaux : 0);
+                        const rawResult = lYear - (cYear + intYear + amort);
+                        let taxBase = 0;
+                        if (rawResult > 0) {
+                          const used = Math.min(rawResult, deficit);
+                          taxBase = rawResult - used;
+                          deficit -= used;
+                        } else {
+                          deficit += Math.abs(rawResult);
+                        }
+                        const yearlyTax = regime.toLowerCase().includes("réel")
+                          ? taxBase * (tmi + 0.172)
+                          : (lYear * (regime.toLowerCase().includes("micro-bic") ? 0.5 : 0.7)) * (tmi + 0.172);
+                        const isDeficit = rawResult < 0;
+                        return (
+                          <tr key={y} className="border-b border-border/50 last:border-0">
+                            <td className="px-3 py-2.5 font-black text-accent text-sm">A{y}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-xs">{fmt(lYear)} €</td>
+                            <td className={`px-3 py-2.5 text-right font-mono text-xs font-bold ${isDeficit ? "text-green" : "text-red"}`}>
+                              {isDeficit ? `−${fmt(Math.abs(rawResult))}` : `+${fmt(rawResult)}`} €
+                            </td>
+                            <td className={`px-3 py-2.5 text-right font-mono text-xs font-bold ${yearlyTax > 0 ? "text-red" : "text-green"}`}>
+                              {yearlyTax > 0 ? `${fmt(yearlyTax)} €` : "0 €"}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <button
+              onClick={handleActualDownload}
+              disabled={isDownloading}
+              className="w-full py-4 rounded-2xl bg-accent text-white font-black flex items-center justify-center gap-2 shadow-lg shadow-accent/20 disabled:opacity-50"
+            >
+              {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              Télécharger le PDF complet
+            </button>
+            <p className="text-center text-[11px] text-text-secondary pb-4">Les calculs fiscaux sont indicatifs. Consultez un expert-comptable.</p>
+          </div>
+
+          {/* Desktop PDF preview — hidden on phones */}
+          <div className="flex-1 overflow-auto p-4 md:p-10 bg-bg/50 hidden md:flex justify-center items-start print:bg-white print:p-0 print:overflow-visible print:flex">
+            <div className="shadow-2xl print:shadow-none origin-top" style={{ zoom: pdfZoom, width: '794px' } as React.CSSProperties}>
+              <PDFReport
+                 price={price} notaire={notaire} apport={effectiveApport}
+                 taux={taux} duree={duree} loyer={loyer} cashflow={cashflow}
+                 rendementBrut={rendementBrut} rendementNet={rendementNet}
+                 monthlyTax={monthlyTax} mp={mp} regime={regime}
+                 name={simName || `Simulation ${fmtK(price)}`}
+                 revaluation={revaluation}
+                 vacance={vacance}
+                 inflationLoyers={inflationLoyers}
+                 dpe={dpe}
+                 listingUrl={listingUrl}
+                 tmi={tmi}
+                 travaux={travaux}
+              />
+            </div>
+          </div>
+
+          {/* Off-screen PDF source for html2canvas (always rendered, never display:none) */}
+          <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '794px', pointerEvents: 'none' }} aria-hidden="true">
+            <div ref={reportRef}>
+              <PDFReport
+                 price={price} notaire={notaire} apport={effectiveApport}
                  taux={taux} duree={duree} loyer={loyer} cashflow={cashflow}
                  rendementBrut={rendementBrut} rendementNet={rendementNet}
                  monthlyTax={monthlyTax} mp={mp} regime={regime}
@@ -1095,20 +1265,41 @@ export default function SimulationPage() {
 
 // ── PDF Report Component (Modern & Premium) ───────────────────
 
-function PDFReport({ 
-  price, notaire, apport, taux, duree, loyer, 
+interface PrintableReportProps {
+  price: number;
+  loyer: number;
+  notaire: number;
+  taux: number;
+  duree: number;
+  apport: number;
+  cashflow: number;
+  rendementBrut: number;
+  rendementNet: number;
+  monthlyTax: number;
+  mp: number;
+  regime: string;
+  name: string;
+  revaluation: number;
+  vacance: number;
+  inflationLoyers: number;
+  dpe: string;
+  listingUrl: string;
+  tmi: number;
+  travaux: number;
+}
+
+function PDFReport({
+  price, loyer, notaire, taux, duree, apport,
   cashflow, rendementBrut, rendementNet, monthlyTax, mp, regime, name,
-  revaluation, vacance, inflationLoyers, dpe, listingUrl, tmi, travaux
-}: any) {
+  revaluation, inflationLoyers, dpe, listingUrl, tmi, travaux
+}: PrintableReportProps) {
   const totalAcquisition = price + notaire + travaux;
   const principal = totalAcquisition - apport;
-  const cashflowAnnuel = cashflow * 12;
   
   // Amortissement calculation: 80% of property over 20 years (4% annual) + 10% of works over 10 years
   const annualAmortissementBien = price * 0.04;
   const annualAmortissementTravaux = travaux * 0.1; 
   const totalAnnualAmortissement = annualAmortissementBien + annualAmortissementTravaux;
-  const monthlyAmortissement = totalAnnualAmortissement / 12;
   
   const annualChargesTotal = (price * 0.008) + 600 + 150 + (loyer * 12 * 0.025) + 300;
   const annualInterest = principal * (taux / 100);
@@ -1148,8 +1339,6 @@ function PDFReport({
   });
 
   const displayProjection = fullProjection.filter(p => [1, 5, 10, 15, 20].includes(p.y));
-  const tmiPct = Math.round(tmi * 100);
-  const isLMNPReel = regime.toLowerCase().includes("réel");
 
   return (
     <div className="bg-white print:block overflow-hidden">
@@ -1351,7 +1540,7 @@ function PDFReport({
             <h4 className="text-xs font-black text-indigo-600 uppercase mb-2">Note sur le Report de Déficit</h4>
             <p className="text-[10px] text-slate-500 leading-relaxed italic">
               Le régime LMNP Réel permet de reporter indéfiniment vos déficits (amortissements non consommés). 
-              Le tableau ci-dessus simule cette "réserve fiscale" qui annule votre impôt tant qu&apos;elle n&apos;est pas épuisée.
+              Le tableau ci-dessus simule cette &quot;réserve fiscale&quot; qui annule votre impôt tant qu&apos;elle n&apos;est pas épuisée.
             </p>
           </div>
         </section>

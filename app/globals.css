@@ -4,38 +4,102 @@
 
 /* ── Light theme (default) ───────────────────────────────────── */
 :root {
-  --bg: #F5F3FF;
+  --bg: #F8FAFC;
   --card: #FFFFFF;
-  --accent: #6C63FF;
-  --green: #059669;
-  --red: #DC2626;
-  --text: #111827;
-  --text-secondary: #6B7280;
-  --border: #E5E7EB;
+  --accent: #6366F1;
+  --accent-light: #EEF2FF;
+  --green: #10B981;
+  --green-light: #ECFDF5;
+  --red: #EF4444;
+  --red-light: #FEF2F2;
+  --yellow: #F59E0B;
+  --yellow-light: #FFFBEB;
+  --text: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --border: #E2E8F0;
+  --header-bg: rgba(255, 255, 255, 0.8);
 }
 
 /* ── Dark theme ──────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg: #0B0B1A;
-  --card: #1A1A3E;
-  --accent: #6C63FF;
-  --green: #00D9A6;
-  --red: #FF6B6B;
-  --text: #F5F3FF;
-  --text-secondary: #9CA3AF;
-  --border: #2D2D5E;
+  --bg: #0F172A;
+  --card: #1E293B;
+  --accent: #818CF8;
+  --accent-light: rgba(129, 140, 248, 0.1);
+  --green: #34D399;
+  --green-light: rgba(52, 211, 153, 0.1);
+  --red: #F87171;
+  --red-light: rgba(248, 113, 113, 0.1);
+  --yellow: #FBBF24;
+  --yellow-light: rgba(251, 191, 36, 0.1);
+  --text: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --border: #334155;
+  --header-bg: rgba(15, 23, 42, 0.8);
 }
 
 body {
   background-color: var(--bg);
   color: var(--text);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/* ── Glassmorphism ─────────────────────────────────────────── */
+.glass {
+  background: var(--header-bg);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Custom Utilities ──────────────────────────────────────── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+  
+  .bg-grid {
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .premium-shadow {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .premium-shadow-hover {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes shimer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimer {
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255,255,255,0.05) 50%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimer 3s infinite;
 }
 
 /* ── Print Styles ────────────────────────────────────────────── */

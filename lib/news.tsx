@@ -1,4 +1,4 @@
-import { GraduationCap, PlayCircle, Building, Newspaper, LucideIcon } from "lucide-react";
+import { GraduationCap, PlayCircle, Building, LucideIcon } from "lucide-react";
 
 export type Article = {
   id: string;

@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Newspaper, GraduationCap, PlayCircle, Building, ArrowUpRight, X } from "lucide-react";
+import { ChevronLeft, Newspaper, ArrowUpRight, X } from "lucide-react";
 import { NEWS_ARTICLES, type Article } from "@/lib/news";
 
 function ArticleSheet({ article, onClose }: { article: Article; onClose: () => void }) {
-  const Icon = article.icon;
   return (
     <div
       className="fixed inset-0 z-[60] flex flex-col justify-end"

@@ -5,10 +5,9 @@ import { useUserTmi } from "@/hooks/use-user-tmi";
 import Link from "next/link";
 import {
   Building2, Home, Store, Warehouse, Building, Plus,
-  ChevronRight, TrendingUp, X, TrendingDown, Percent,
+  ChevronRight, TrendingUp, X, Percent,
   CalendarRange, Wallet, Landmark, ArrowUpRight,
-  Newspaper, GraduationCap, PlayCircle, ExternalLink,
-  ArrowDown, Activity, Info
+  Newspaper, GraduationCap, ArrowDown, Activity, Info
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -27,7 +26,6 @@ type DashLoan = Loan & {
 };
 type DashCharge = Charge & { property_id: string };
 type DashRevenue = Revenue & { property_id: string };
-
 type Entry = {
   property: Property; loan: DashLoan | null;
   charges: DashCharge[]; revenue: DashRevenue | null;
@@ -82,34 +80,34 @@ function LoadingSkeleton() {
 
 type KpiColor = "accent" | "green" | "yellow" | "red";
 
-const KPI_COLORS: Record<KpiColor, { main: string; glow: string; bg: string; border: string; grad1: string; grad2: string }> = {
-  accent:  { main: "#6C63FF", glow: "rgba(108,99,255,0.25)", bg: "rgba(108,99,255,0.08)", border: "rgba(108,99,255,0.25)", grad1: "#6C63FF", grad2: "#8B83FF" },
-  green:   { main: "#00D9A6", glow: "rgba(0,217,166,0.25)",  bg: "rgba(0,217,166,0.08)",  border: "rgba(0,217,166,0.25)",  grad1: "#00D9A6", grad2: "#00F0BB" },
-  yellow:  { main: "#FBBF24", glow: "rgba(251,191,36,0.25)", bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.25)", grad1: "#FBBF24", grad2: "#FCD34D" },
-  red:     { main: "#FF6B6B", glow: "rgba(255,107,107,0.25)",bg: "rgba(255,107,107,0.08)",border: "rgba(255,107,107,0.25)",grad1: "#FF6B6B", grad2: "#FF8787" },
+const KPI_COLORS: Record<KpiColor, { main: string; glow: string; bg: string; border: string; grad1: string; grad2: string; light: string }> = {
+  accent:  { main: "var(--accent)", glow: "rgba(99,102,241,0.25)", bg: "var(--accent-light)", border: "rgba(99,102,241,0.2)", grad1: "#6366F1", grad2: "#818CF8", light: "var(--accent-light)" },
+  green:   { main: "var(--green)",  glow: "rgba(16,185,129,0.25)", bg: "var(--green-light)",  border: "rgba(16,185,129,0.2)",  grad1: "#10B981", grad2: "#34D399", light: "var(--green-light)" },
+  yellow:  { main: "var(--yellow)", glow: "rgba(245,158,11,0.25)",  bg: "var(--yellow-light)", border: "rgba(245,158,11,0.2)",  grad1: "#F59E0B", grad2: "#FBBF24", light: "var(--yellow-light)" },
+  red:     { main: "var(--red)",    glow: "rgba(239,68,68,0.25)",   bg: "var(--red-light)",    border: "rgba(239,68,68,0.2)",    grad1: "#EF4444", grad2: "#F87171", light: "var(--red-light)" },
 };
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  const w = 56;
-  const h = 22;
+  const w = 44;
+  const h = 20;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
   const pts = data.map((v, i) => ({
     x: (i / (data.length - 1)) * w,
-    y: h - ((v - min) / range) * (h - 4) - 2,
+    y: h - ((v - min) / range) * (h - 6) - 3,
   }));
 
   let path = `M${pts[0].x},${pts[0].y}`;
   for (let i = 0; i < pts.length - 1; i++) {
-    const cp = (pts[i + 1].x - pts[i].x) * 0.35;
+    const cp = (pts[i + 1].x - pts[i].x) * 0.4;
     path += ` C${pts[i].x + cp},${pts[i].y} ${pts[i + 1].x - cp},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
   }
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" style={{ opacity: 0.7 }}>
-      <path d={path} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r={2} fill={color} />
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0 overflow-visible self-end" style={{ filter: `drop-shadow(0 2px 4px ${color}33)` }}>
+      <path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r={2.5} fill={color} stroke="var(--card)" strokeWidth={1} />
     </svg>
   );
 }
@@ -128,47 +126,51 @@ function KpiCard({
   return (
     <button
       onClick={onClick}
-      className={`relative overflow-hidden bg-card rounded-2xl p-4 text-left flex flex-col gap-1.5 w-full transition-all duration-200 active:scale-[0.97] border ${
+      className={`relative overflow-hidden bg-card rounded-[22px] p-3.5 text-left flex flex-col gap-1.5 w-full min-w-0 transition-all duration-300 active:scale-[0.96] border shadow-sm ${
         active
-          ? "shadow-[0_0_16px_rgba(108,99,255,0.2)]"
-          : "hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
+          ? "border-transparent ring-2 ring-offset-2 ring-offset-bg"
+          : "border-border/60 hover:border-accent/40 hover:shadow-md"
       }`}
       style={{
+        boxShadow: active ? `0 10px 25px -5px ${c.glow}, 0 8px 10px -6px ${c.glow}` : undefined,
         borderColor: active ? c.main : undefined,
+        transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}
     >
-      {/* Gradient top bar */}
+      {/* Decorative gradient corner */}
       <div
-        className="absolute top-0 left-0 right-0 h-[3px]"
-        style={{
-          background: `linear-gradient(90deg, ${c.grad1}, ${c.grad2})`,
-          opacity: active ? 1 : 0.5,
-          transition: "opacity 0.2s ease",
-        }}
+        className="absolute -right-4 -top-4 w-12 h-12 rounded-full opacity-10 blur-xl"
+        style={{ background: c.grad1 }}
       />
 
-      {/* Header: icon + label + chevron */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+      {active && (
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-white/5 pointer-events-none" />
+      )}
+
+      {/* Header: icon + label */}
+      <div className="flex items-center justify-between gap-1 z-10 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
           <div
-            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-            style={{ background: c.bg, border: `1px solid ${c.border}` }}
+            className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 shadow-sm"
+            style={{ background: c.light, border: `1px solid ${c.border}` }}
           >
-            <Icon size={10} style={{ color: c.main }} strokeWidth={2.2} />
+            <Icon size={12} style={{ color: c.main }} strokeWidth={2.5} />
           </div>
-          <span className="text-text-secondary text-[10px] font-semibold tracking-wider uppercase">{label}</span>
+          <span className="text-text-secondary text-[9px] font-bold tracking-[0.06em] uppercase truncate">{label}</span>
         </div>
-        <ChevronRight size={11} className={`transition-colors ${active ? "text-accent" : "text-border"}`} />
+        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all ${active ? "bg-accent text-white" : "bg-bg text-border"}`}>
+            <ChevronRight size={8} strokeWidth={3} />
+        </div>
       </div>
 
       {/* Value row + sparkline */}
-      <div className="flex items-end justify-between gap-2">
-        <div className="flex items-baseline gap-1 min-w-0">
-          <span className={`font-mono font-bold text-[1.45rem] leading-none tracking-tight ${valueColor}`}>
+      <div className="flex items-end justify-between gap-1.5 z-10 min-w-0">
+        <div className="flex items-baseline gap-0.5 min-w-0 overflow-hidden">
+          <span className={`font-mono font-bold text-[1.35rem] leading-none tracking-tight truncate ${valueColor}`}>
             {value}
           </span>
-          <span className={`font-mono text-[11px] font-medium ${
-            negative ? "text-red/70" : positive ? "text-green/70" : "text-text-secondary"
+          <span className={`font-mono text-[10px] font-bold opacity-80 shrink-0 ${
+            negative ? "text-red" : positive ? "text-green" : "text-text-secondary"
           }`}>
             {unit}
           </span>
@@ -177,7 +179,10 @@ function KpiCard({
       </div>
 
       {/* Subtitle */}
-      <span className="text-text-secondary text-[10px] leading-tight">{sub}</span>
+      <span className="text-text-muted text-[9px] font-medium leading-tight z-10 flex items-center gap-1 truncate">
+          <div className="w-1 h-1 rounded-full shrink-0" style={{ background: c.main }} />
+          <span className="truncate">{sub}</span>
+      </span>
     </button>
   );
 }
@@ -204,6 +209,7 @@ function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
         ? MONTHS_FR[d.getMonth()]
         : `${MONTHS_FR[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`,
       shortLabel: MONTHS_FR[d.getMonth()],
+      fullLabel: `${MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`,
       year: d.getFullYear(),
       value: patrimoine / Math.pow(growth, months - 1 - i),
     };
@@ -213,30 +219,28 @@ function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
   const last = chartData[chartData.length - 1].value;
   const growthPct = first > 0 ? ((last - first) / first) * 100 : 0;
 
-  // SVG dimensions
   const W = 580;
-  const H = 200;
-  const PAD = { top: 24, right: 12, bottom: 32, left: 50 };
+  const H = 220;
+  const PAD = { top: 30, right: 15, bottom: 40, left: 55 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
   const values = chartData.map(d => d.value);
-  const minVal = Math.min(...values) * 0.97;
+  const minVal = Math.min(...values) * 0.98;
   const maxVal = Math.max(...values) * 1.02;
   const valRange = maxVal - minVal || 1;
 
   const xOf = (i: number) => PAD.left + (i / (chartData.length - 1)) * plotW;
   const yOf = (v: number) => PAD.top + plotH - ((v - minVal) / valRange) * plotH;
 
-  // Smooth bezier path
   const points = chartData.map((d, i) => ({ x: xOf(i), y: yOf(d.value) }));
 
   function bezierPath(pts: { x: number; y: number }[]): string {
     if (pts.length < 2) return "";
     let path = `M${pts[0].x},${pts[0].y}`;
     for (let i = 0; i < pts.length - 1; i++) {
-      const cp = (pts[i + 1].x - pts[i].x) * 0.35;
-      path += ` C${pts[i].x + cp},${pts[i].y} ${pts[i + 1].x - cp},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
+        const cp = (pts[i + 1].x - pts[i].x) * 0.45;
+        path += ` C${pts[i].x + cp},${pts[i].y} ${pts[i + 1].x - cp},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
     }
     return path;
   }
@@ -244,19 +248,16 @@ function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
   const linePath = bezierPath(points);
   const areaPath = `${linePath} L${points[points.length - 1].x},${PAD.top + plotH} L${points[0].x},${PAD.top + plotH} Z`;
 
-  // X-axis labels: show a subset to avoid clutter
-  const labelStep = months <= 12 ? 1 : months <= 24 ? 2 : 6;
+  const labelStep = months <= 6 ? 1 : months <= 12 ? 2 : months <= 24 ? 4 : 12;
   const xLabels = chartData
     .map((d, i) => ({ ...d, i }))
     .filter((_, i) => i % labelStep === 0 || i === chartData.length - 1);
 
-  // Hover handler
   const onMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
     const mx = ((e.clientX - rect.left) / rect.width) * W;
-    // Find nearest point
     let nearest = 0;
     let nearestDist = Infinity;
     for (let i = 0; i < points.length; i++) {
@@ -267,38 +268,40 @@ function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
   }, [points]);
 
   const hoverPoint = hoverIdx !== null ? chartData[hoverIdx] : null;
-  const hoverDelta = hoverIdx !== null && hoverIdx > 0
-    ? ((chartData[hoverIdx].value - chartData[hoverIdx - 1].value) / chartData[hoverIdx - 1].value) * 100
-    : null;
 
   return (
-    <div className="bg-card rounded-2xl p-4 border border-border">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-sm font-semibold text-text">Évolution patrimoine net</p>
-          <p className="text-[11px] text-text-secondary mt-0.5">
+    <div className="bg-card rounded-[24px] p-6 border border-border shadow-sm premium-shadow">
+      <div className="flex items-start justify-between mb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Activity size={16} className="text-accent" />
+            <p className="text-sm font-bold text-text">Évolution patrimoine net</p>
+          </div>
+          <p className="text-[11px] text-text-muted font-medium">
             {hoverPoint
-              ? `${hoverPoint.label} ${months > 12 ? "" : hoverPoint.year} — ${fmtK(hoverPoint.value)}`
-              : "Survolez le graphique"}
+              ? `${hoverPoint.fullLabel} — ${fmtK(hoverPoint.value)}`
+              : "Analyse dynamique de votre croissance"}
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-green/10 text-green text-[11px] font-semibold px-2.5 py-1 rounded-full border border-green/20">
-          <TrendingUp size={10} strokeWidth={2.5} />
-          +{growthPct.toFixed(1)} %
+        <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-1.5 bg-green-light text-green text-[11px] font-bold px-3 py-1 rounded-full border border-green/20">
+                <TrendingUp size={11} strokeWidth={3} />
+                +{growthPct.toFixed(1)}%
+            </div>
+            <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest leading-none mt-1">Total {range}</span>
         </div>
       </div>
 
       {/* Range selector */}
-      <div className="flex items-center gap-1 mb-3">
+      <div className="flex items-center gap-1.5 p-1 bg-bg rounded-xl border border-border/50 max-w-fit mb-6">
         {(["6M", "1A", "2A", "5A"] as RangeKey[]).map(r => (
           <button
             key={r}
             onClick={() => { setRange(r); setHoverIdx(null); }}
-            className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all duration-200 ${
+            className={`px-4 py-1.5 rounded-lg text-[10px] font-bold tracking-wider transition-all duration-300 ${
               range === r
-                ? "bg-accent text-white shadow-[0_2px_8px_rgba(108,99,255,0.35)]"
-                : "bg-bg text-text-secondary hover:text-text border border-border hover:border-accent/30"
+                ? "bg-card text-accent shadow-sm border border-border active:scale-95"
+                : "text-text-muted hover:text-text active:scale-95"
             }`}
           >
             {r}
@@ -307,136 +310,101 @@ function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
       </div>
 
       {/* Chart */}
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        style={{ height: 200 }}
-        aria-label={`Évolution patrimoine net sur ${months} mois`}
-        onMouseMove={onMouseMove}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        <defs>
-          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6C63FF" stopOpacity={0.35} />
-            <stop offset="85%" stopColor="#6C63FF" stopOpacity={0.02} />
-            <stop offset="100%" stopColor="#6C63FF" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#6C63FF" />
-            <stop offset="100%" stopColor="#00D9A6" />
-          </linearGradient>
-          <filter id="lineGlow">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-        </defs>
-
-        {/* Grid lines */}
-        {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
-          const y = PAD.top + plotH * (1 - t);
-          return (
-            <g key={i}>
-              <line
-                x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
-                stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3 4"
-              />
-              <text x={PAD.left - 8} y={y + 3.5} textAnchor="end" fontSize={8.5}
-                fill="var(--text-secondary)" fontFamily="'Space Mono', monospace">
-                {fmtK(minVal + valRange * t)}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Area fill */}
-        <path d={areaPath} fill="url(#areaGrad)" />
-
-        {/* Line */}
-        <path
-          d={linePath}
-          fill="none"
-          stroke="url(#lineGrad)"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          filter="url(#lineGlow)"
-        />
-
-        {/* End-point dot */}
-        <circle
-          cx={points[points.length - 1].x}
-          cy={points[points.length - 1].y}
-          r={4}
-          fill="#00D9A6"
-          stroke="var(--card)"
-          strokeWidth={2}
-        />
-        {/* Animated pulse on last point */}
-        <circle
-          cx={points[points.length - 1].x}
-          cy={points[points.length - 1].y}
-          r={4}
-          fill="none"
-          stroke="#00D9A6"
-          strokeWidth={1.5}
-          opacity={0.4}
-        >
-          <animate attributeName="r" from="4" to="14" dur="2s" repeatCount="indefinite" />
-          <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
-        </circle>
-
-        {/* X-axis labels */}
-        {xLabels.map(d => (
-          <text
-            key={d.i}
-            x={xOf(d.i)}
-            y={H - PAD.bottom + 16}
-            textAnchor="middle"
-            fontSize={8.5}
-            fill="var(--text-secondary)"
-            fontFamily="'Space Mono', monospace"
+      <div className="relative">
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${W} ${H}`}
+            className="w-full h-auto overflow-visible cursor-crosshair"
+            onMouseMove={onMouseMove}
+            onMouseLeave={() => setHoverIdx(null)}
           >
-            {d.shortLabel}
-          </text>
-        ))}
+            <defs>
+              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.2} />
+                <stop offset="60%" stopColor="var(--accent)" stopOpacity={0.05} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="var(--accent)" />
+                <stop offset="100%" stopColor="var(--green)" />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
 
-        {/* Hover crosshair + tooltip */}
-        {hoverIdx !== null && (() => {
-          const px = points[hoverIdx].x;
-          const py = points[hoverIdx].y;
-          const txw = 90;
-          const txh = hoverDelta !== null ? 38 : 24;
-          const tx = Math.min(Math.max(px - txw / 2, PAD.left), W - PAD.right - txw);
-          const ty = Math.max(py - txh - 14, PAD.top);
-          return (
-            <g>
-              {/* Vertical line */}
-              <line x1={px} y1={PAD.top} x2={px} y2={PAD.top + plotH}
-                stroke="var(--accent)" strokeWidth={0.8} strokeDasharray="3 3" opacity={0.5} />
-              {/* Horizontal line */}
-              <line x1={PAD.left} y1={py} x2={W - PAD.right} y2={py}
-                stroke="var(--accent)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.25} />
-              {/* Dot */}
-              <circle cx={px} cy={py} r={5} fill="url(#lineGrad)" stroke="var(--card)" strokeWidth={2.5} />
-              <circle cx={px} cy={py} r={3} fill="#fff" opacity={0.9} />
-              {/* Tooltip card */}
-              <rect x={tx} y={ty} width={txw} height={txh} rx={10}
-                fill="var(--card)" stroke="var(--accent)" strokeWidth={0.7} opacity={0.96} />
-              <text x={tx + txw / 2} y={ty + 14} textAnchor="middle" fontSize={10}
-                fill="var(--text)" fontWeight={700} fontFamily="'Space Mono', monospace">
-                {fmtK(chartData[hoverIdx].value)}
+            {/* Grid */}
+            {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
+              const y = PAD.top + plotH * (1 - t);
+              return (
+                <g key={i}>
+                  <line
+                    x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+                    stroke="var(--border)" strokeWidth={1} opacity={0.3} strokeDasharray="4 4"
+                  />
+                  <text x={PAD.left - 12} y={y + 3.5} textAnchor="end" fontSize={9}
+                    fill="var(--text-muted)" fontWeight={600} fontFamily="system-ui">
+                    {fmtK(minVal + valRange * t)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Area */}
+            <path d={areaPath} fill="url(#areaGrad)" className="transition-all duration-700" />
+
+            {/* Main Line */}
+            <path
+              d={linePath}
+              fill="none"
+              stroke="url(#lineGrad)"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#glow)"
+              className="transition-all duration-700"
+            />
+
+            {/* X-Axis labels */}
+            {xLabels.map(d => (
+              <text
+                key={d.i}
+                x={xOf(d.i)}
+                y={H - PAD.bottom + 24}
+                textAnchor="middle"
+                fontSize={9}
+                fill="var(--text-muted)"
+                fontWeight={700}
+                className="tracking-tighter"
+              >
+                {d.shortLabel}
               </text>
-              {hoverDelta !== null && (
-                <text x={tx + txw / 2} y={ty + 28} textAnchor="middle" fontSize={8.5}
-                  fill={hoverDelta >= 0 ? "#00D9A6" : "#FF6B6B"} fontWeight={600}>
-                  {hoverDelta >= 0 ? "+" : ""}{hoverDelta.toFixed(1)} % vs préc.
-                </text>
-              )}
-            </g>
-          );
-        })()}
-      </svg>
+            ))}
+
+            {/* Hover State */}
+            {hoverIdx !== null && (() => {
+              const px = points[hoverIdx].x;
+              const py = points[hoverIdx].y;
+              return (
+                <g>
+                  <line x1={px} y1={PAD.top} x2={px} y2={PAD.top + plotH}
+                    stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="4 4" opacity={0.6} />
+                  <circle cx={px} cy={py} r={6} fill="var(--card)" stroke="var(--accent)" strokeWidth={2} />
+                  <circle cx={px} cy={py} r={2.5} fill="var(--accent)" />
+                  
+                  {/* Premium Tooltip */}
+                  <g transform={`translate(${Math.min(Math.max(px - 60, PAD.left), W - PAD.right - 120)}, ${Math.max(py - 55, 10)})`}>
+                      <rect width={120} height={40} rx={12} fill="var(--card)" 
+                        className="shadow-xl" filter="url(#glow)" stroke="var(--border)" strokeWidth={1} style={{ opacity: 0.95 }} />
+                      <text x={60} y={15} textAnchor="middle" fontSize={9} fontWeight={700} fill="var(--text-muted)" className="uppercase">{chartData[hoverIdx].fullLabel}</text>
+                      <text x={60} y={32} textAnchor="middle" fontSize={14} fontWeight={800} fill="var(--text)">{fmtK(chartData[hoverIdx].value)}</text>
+                  </g>
+                </g>
+              );
+            })()}
+          </svg>
+      </div>
     </div>
   );
 }
@@ -709,30 +677,46 @@ function PropertyRow({ entry }: { entry: Entry }) {
 
   return (
     <Link href={`/biens/${property.id}`}>
-      <div className="flex items-center gap-3 py-3.5 border-b border-border last:border-0 hover:bg-bg/50 -mx-1 px-1 rounded-lg transition-colors active:scale-[0.99]">
-        <div className="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-accent shrink-0 border border-border">
-          <Icon size={18} strokeWidth={1.8} />
+      <div className="flex items-center gap-4 py-4 px-2 border-b border-border last:border-0 hover:bg-bg/60 -mx-2 rounded-2xl transition-all duration-300 group active:scale-[0.98]">
+        <div className="relative">
+            <div className={`w-12 h-12 rounded-[14px] bg-bg flex items-center justify-center text-accent shrink-0 border border-border group-hover:border-accent/30 transition-colors shadow-sm`}>
+                <Icon size={20} strokeWidth={1.5} />
+            </div>
+            {cfPositive && (
+                <div className="absolute -right-1 -bottom-1 w-4 h-4 bg-green text-white rounded-full flex items-center justify-center border-2 border-card shadow-sm">
+                    <TrendingUp size={8} strokeWidth={3} />
+                </div>
+            )}
         </div>
+
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-text truncate">{property.name}</p>
-          <p className="text-[11px] text-text-secondary">
-            {property.regime ?? "LMNP"} · {revenue?.monthly_rent ? `${fmt(revenue.monthly_rent)} €/mo` : "Pas de loyer"}
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-bold text-text truncate group-hover:text-accent transition-colors">{property.name}</p>
+            <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${text} ${bg} opacity-80`}>
+              {score}
+            </div>
+          </div>
+          <p className="text-[11px] text-text-muted font-medium mt-0.5">
+            <span className="text-text-secondary">{property.regime ?? "LMNP"}</span> · {revenue?.monthly_rent ? `${fmt(revenue.monthly_rent)}€/mo` : "Sans loyer"}
           </p>
         </div>
-        <div className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${text} ${bg}`}>
-          {score}/100
+
+        <div className="text-right shrink-0">
+          <p className={`font-mono text-sm font-extrabold ${cfPositive ? "text-green" : "text-red"}`}>
+            {cfPositive ? "+" : "−"}{fmt(cashflow)}<span className="text-xs ml-0.5">€</span>
+          </p>
+          <p className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">Net / mois</p>
         </div>
-        <div className={`font-mono text-sm font-bold w-[4.5rem] text-right shrink-0 ${cfPositive ? "text-green" : "text-red"}`}>
-          {cfPositive ? "+" : "−"}{fmt(cashflow)} €
+        
+        <div className="w-8 h-8 rounded-full bg-bg flex items-center justify-center text-border group-hover:text-accent group-hover:bg-accent/5 transition-all">
+            <ChevronRight size={14} strokeWidth={2.5} />
         </div>
-        <ChevronRight size={14} className="text-text-secondary shrink-0" />
       </div>
     </Link>
   );
 }
 
 function ArticleSheet({ article, onClose }: { article: Article; onClose: () => void }) {
-  const Icon = article.icon;
   return (
     <div
       className="fixed inset-0 z-[60] flex flex-col justify-end"
@@ -844,31 +828,36 @@ function NewsCard({
   return (
     <div 
       onClick={() => onClick(article.id)}
-      className="bg-bg border border-border rounded-2xl p-3.5 hover:border-accent/30 transition-all group active:scale-[0.98] cursor-pointer"
+      className="bg-card border border-border/60 rounded-[24px] p-5 hover:border-accent/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative overflow-hidden active:scale-[0.98]"
     >
-      <div className="flex gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${article.color} bg-current/10`} style={{ borderColor: 'currentColor' }}>
-          <Icon size={18} strokeWidth={2} />
+      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
+      
+      <div className="flex gap-5 relative z-10">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-transform duration-500 group-hover:scale-110 ${article.color} bg-current/5`} style={{ borderColor: 'rgba(currentColor, 0.1)' }}>
+          <Icon size={24} strokeWidth={1.5} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-0.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${article.color}`}>
               {article.category}
             </span>
-            <span className="text-[10px] text-text-muted">{article.date}</span>
+            <span className="text-[10px] text-text-muted font-bold flex items-center gap-1">
+                <CalendarRange size={10} />
+                {article.date}
+            </span>
           </div>
-          <h3 className="text-sm font-semibold text-text leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+          <h3 className="text-base font-bold text-text leading-snug group-hover:text-accent transition-colors">
             {article.title}
           </h3>
-          <div className="flex items-center gap-2 mt-2">
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase ${
+          <div className="flex items-center gap-2 mt-3">
+            <span className={`text-[9px] px-2 py-1 rounded-lg font-bold uppercase tracking-wider ${
               article.type === "cours" ? "bg-accent/10 text-accent border border-accent/20" : "bg-green/10 text-green border border-green/20"
             }`}>
               {article.type === "cours" ? "Formation" : "Actualité"}
             </span>
-            <div className="flex items-center gap-1 text-[10px] text-text-muted font-medium ml-auto">
-              <span>Lire plus</span>
-              <ArrowUpRight size={10} />
+            <div className="flex items-center gap-1.5 text-[11px] text-accent font-bold ml-auto opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+              <span>Lire la suite</span>
+              <ArrowUpRight size={12} strokeWidth={3} />
             </div>
           </div>
         </div>
@@ -879,34 +868,41 @@ function NewsCard({
 
 function NewsSection({ onArticleClick }: { onArticleClick: (id: string) => void }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-bold text-text flex items-center gap-2">
-          <Newspaper size={16} className="text-accent" />
-          Actualités & Conseils
-        </h2>
-        <Link href="/conseils" className="text-[11px] text-accent font-semibold hover:underline">Tout voir</Link>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-accent/10 rounded-lg">
+                <Newspaper size={18} className="text-accent" />
+            </div>
+            <h2 className="text-base font-extrabold text-text tracking-tight">Actualités & Conseils</h2>
+        </div>
+        <Link href="/conseils" className="text-xs text-accent font-bold hover:underline underline-offset-4">Tout voir</Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-4">
         {NEWS_ARTICLES.map(art => (
           <NewsCard key={art.id} article={art} onClick={onArticleClick} />
         ))}
       </div>
 
-      <div className="bg-accent/5 border border-accent/10 rounded-2xl p-4 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
-          <GraduationCap size={24} />
+      <div className="relative group overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[24px] p-6 shadow-xl shadow-indigo-500/20 active:scale-[0.99] transition-transform cursor-pointer">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+        
+        <div className="flex items-center gap-5 relative z-10">
+          <div className="w-14 h-14 rounded-[20px] bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 border border-white/30 shadow-inner">
+            <GraduationCap size={28} strokeWidth={1.5} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-extrabold text-white leading-tight">Académie Propfolio</p>
+            <p className="text-[11px] text-indigo-100 mt-1 font-medium leading-relaxed">
+              Devenez un expert de l&apos;investissement meublé avec nos mentors.
+            </p>
+          </div>
+          <div className="px-4 py-2 bg-white text-indigo-900 rounded-xl text-xs font-bold shadow-lg shadow-black/10 hover:bg-indigo-50 transition-colors">
+            Rejoindre
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="text-xs font-bold text-text">Bientôt : Académie Propfolio</p>
-          <p className="text-[10px] text-text-secondary mt-0.5 leading-tight">
-            Des cours complets pour passer de débutant à investisseur aguerri.
-          </p>
-        </div>
-        <button className="px-3 py-1.5 bg-accent text-white rounded-lg text-[10px] font-bold shadow-lg shadow-accent/20">
-          M&apos;abonner
-        </button>
       </div>
     </div>
   );
@@ -984,24 +980,32 @@ export default function DashboardPage() {
   // ── Render ──────────────────────────────────────────────────
 
   return (
-    <div className="px-4 pt-5 pb-8 max-w-2xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-text leading-tight">Vue d&apos;ensemble</h1>
-          <p className="text-text-secondary text-sm mt-0.5">
-            {entries.length === 0
-              ? "Aucun bien suivi"
-              : `${entries.length} bien${entries.length > 1 ? "s" : ""} suivi${entries.length > 1 ? "s" : ""}`}
-          </p>
-        </div>
-        {entries.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-green/10 text-green text-xs font-semibold px-3 py-1.5 rounded-full border border-green/20">
-            <TrendingUp size={12} strokeWidth={2.5} />
-            +{growthPct.toFixed(1)} % / an
+    <div className="relative min-h-screen bg-bg overflow-x-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 inset-x-0 h-[400px] bg-gradient-to-b from-accent/5 to-transparent pointer-events-none" />
+      <div className="absolute top-20 right-[-10%] w-[40%] h-[20%] bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-40 left-[-10%] w-[30%] h-[15%] bg-green/5 rounded-full blur-[100px] pointer-events-none" />
+      
+      <div className="relative px-4 pt-8 pb-12 max-w-2xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-end justify-between px-1">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black text-text tracking-tight leading-none bg-gradient-to-r from-text to-text-secondary bg-clip-text text-transparent">Tableau de bord</h1>
+            <div className="text-text-muted text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                Diagnostic Stratégique
+            </div>
           </div>
-        )}
-      </div>
+          {entries.length > 0 && (
+            <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1.5 bg-green/10 text-green text-[10px] font-extrabold px-3 py-1.5 rounded-full border border-green/20 shadow-sm">
+                    <TrendingUp size={12} strokeWidth={3} />
+                    PV LATENTE +{growthPct.toFixed(1)}%
+                </div>
+                <span className="text-[9px] text-text-muted font-bold mr-1">Rendement pondéré</span>
+            </div>
+          )}
+        </div>
 
       {entries.length === 0 ? <EmptyState /> : (
         <>
@@ -1094,5 +1098,6 @@ export default function DashboardPage() {
         />
       )}
     </div>
-  );
+  </div>
+);
 }
