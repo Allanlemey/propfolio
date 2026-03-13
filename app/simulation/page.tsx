@@ -9,6 +9,7 @@ import {
   calcRemainingCapital,
   calcMonthlyTax,
 } from "@/lib/calculations";
+import { FileDown } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -611,12 +612,16 @@ export default function SimulationPage() {
     setTimeout(() => setSaved(false), 3000);
   }
 
+  function handleDownloadPDF() {
+    window.print();
+  }
+
   // ── Render ───────────────────────────────────────────────────
 
   return (
     <div className="px-4 pt-5 pb-8 max-w-2xl mx-auto space-y-5">
       {/* Header */}
-      <div>
+      <div className="no-print">
         <h1 className="text-xl font-bold text-text leading-tight">
           Simuler une acquisition
         </h1>
@@ -626,15 +631,17 @@ export default function SimulationPage() {
       </div>
 
       {/* Saved simulations */}
-      <SimList
-        sims={savedSims}
-        activeId={activeSimId}
-        onLoad={loadSim}
-        onDelete={deleteSim}
-      />
+      <div className="no-print">
+        <SimList
+          sims={savedSims}
+          activeId={activeSimId}
+          onLoad={loadSim}
+          onDelete={deleteSim}
+        />
+      </div>
 
       {/* Inputs */}
-      <div ref={simulatorRef} className="bg-card rounded-2xl p-4 border border-border space-y-5">
+      <div ref={simulatorRef} className="bg-card rounded-2xl p-4 border border-border space-y-5 no-print">
         <Slider
           label="Prix du bien"
           value={price}
@@ -761,7 +768,7 @@ export default function SimulationPage() {
 
       {/* Hero cashflow */}
       <div
-        className={`rounded-2xl p-6 border ${
+        className={`rounded-2xl p-6 border no-print ${
           cfPositive
             ? "bg-green/5 border-green/20"
             : "bg-red/5 border-red/20"
@@ -795,7 +802,7 @@ export default function SimulationPage() {
       </div>
 
       {/* 4 KPI cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 no-print">
         {[
           {
             label: "Rendement brut",
@@ -834,7 +841,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Projection chart */}
-      <div className="bg-card rounded-2xl p-4 border border-border">
+      <div className="bg-card rounded-2xl p-4 border border-border no-print">
         <p className="text-sm font-semibold text-text mb-0.5">
           Projection patrimoine net — 10 ans
         </p>
@@ -869,7 +876,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Hypotheses */}
-      <div className="bg-card rounded-2xl p-4 border border-border">
+      <div className="bg-card rounded-2xl p-4 border border-border no-print">
         <p className="text-sm font-semibold text-text mb-4">Hypothèses</p>
         <div className="space-y-4">
           <Stepper
@@ -903,7 +910,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Disclaimer */}
-      <div className="flex gap-3 p-4 bg-[#FBBF24]/5 border border-[#FBBF24]/20 rounded-xl">
+      <div className="flex gap-3 p-4 bg-[#FBBF24]/5 border border-[#FBBF24]/20 rounded-xl no-print">
         <AlertTriangle
           size={16}
           className="text-[#FBBF24] shrink-0 mt-0.5"
@@ -915,7 +922,7 @@ export default function SimulationPage() {
       </div>
 
       {/* Save */}
-      <div className="space-y-3">
+      <div className="space-y-3 no-print">
         {/* Nom de la simulation */}
         <div className="relative">
           <Pencil size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
@@ -966,7 +973,109 @@ export default function SimulationPage() {
               : "Sauvegarder cette simulation"}
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleDownloadPDF}
+          className="w-full py-3 rounded-xl text-xs font-bold text-accent border border-accent/20 bg-accent/5 flex items-center justify-center gap-2 hover:bg-accent/10 transition-all active:scale-[0.99] no-print"
+        >
+          <FileDown size={14} />
+          Télécharger le rapport simulation (PDF)
+        </button>
       </div>
+
+      {/* Report part for printing only */}
+      <div className="hidden print-only">
+        <PDFReport 
+           price={price} notaire={notaire} apport={effectiveApport} 
+           taux={taux} duree={duree} loyer={loyer} cashflow={cashflow}
+           rendementBrut={rendementBrut} rendementNet={rendementNet}
+           monthlyTax={monthlyTax} mp={mp} regime={regime}
+           name={simName || `Simulation ${fmtK(price)}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── PDF Report Component (Print Only) ─────────────────────────
+
+function PDFReport({ 
+  price, notaire, apport, taux, duree, loyer, 
+  cashflow, rendementBrut, rendementNet, monthlyTax, mp, regime, name 
+}: any) {
+  return (
+    <div className="p-10 space-y-8 bg-white text-black min-h-screen">
+      <div className="flex justify-between items-start border-b-2 border-accent pb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-accent">Propfolio</h1>
+          <p className="text-sm text-gray-500">Rapport d&apos;investissement immobilier</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-bold">{name}</p>
+          <p className="text-sm text-gray-500">{new Date().toLocaleDateString("fr-FR")}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-10">
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold border-b border-gray-200 pb-2">Acquisition</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between"><span>Prix du bien</span><span className="font-bold">{fmt(price)} €</span></div>
+            <div className="flex justify-between"><span>Frais de notaire</span><span className="font-bold">{fmt(notaire)} €</span></div>
+            <div className="flex justify-between"><span>Apport personnel</span><span className="font-bold">{fmt(apport)} €</span></div>
+            <div className="flex justify-between border-t border-gray-100 pt-2">
+              <span className="font-bold">Total acquisition</span>
+              <span className="font-bold text-accent">{fmt(price + notaire)} €</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold border-b border-gray-200 pb-2">Financement</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between"><span>Montant emprunté</span><span className="font-bold">{fmt(price + notaire - apport)} €</span></div>
+            <div className="flex justify-between"><span>Taux d&apos;intérêt</span><span className="font-bold">{taux} %</span></div>
+            <div className="flex justify-between"><span>Durée</span><span className="font-bold">{duree} ans</span></div>
+            <div className="flex justify-between border-t border-gray-100 pt-2">
+              <span className="font-bold text-red">Mensualité (crédit)</span>
+              <span className="font-bold text-red">{fmt(mp)} €</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+        <h2 className="text-lg font-bold mb-4">Rentabilité & Cashflow</h2>
+        <div className="grid grid-cols-3 gap-6 text-center">
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Rendement Brut</p>
+            <p className="text-2xl font-bold">{rendementBrut.toFixed(2)} %</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Rendement Net</p>
+            <p className="text-2xl font-bold">{rendementNet.toFixed(2)} %</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fiscalité ({regime})</p>
+            <p className="text-2xl font-bold">{fmt(monthlyTax)} €/mois</p>
+          </div>
+        </div>
+        
+        <div className="mt-8 pt-8 border-t border-gray-200 flex justify-between items-center">
+          <div>
+            <p className="text-sm font-bold text-gray-500 uppercase">Cashflow net mensuel</p>
+            <p className={`text-4xl font-bold ${cashflow >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {cashflow >= 0 ? "+" : "-"}{fmt(cashflow)} €
+            </p>
+          </div>
+          <div className="text-right max-w-xs">
+            <p className="text-[10px] text-gray-400 italic">
+              Ce document est généré par Propfolio. Les calculs sont fournis à titre indicatif et ne constituent pas un engagement contractuel.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

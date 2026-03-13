@@ -8,6 +8,7 @@ import {
   ChevronRight, TrendingUp, X, TrendingDown, Percent,
   CalendarRange, Wallet, Landmark, ArrowUpRight,
   Newspaper, GraduationCap, PlayCircle, ExternalLink,
+  ArrowDown, Activity, Info
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/lib/calculations";
 import type { Property, Loan, Charge, Revenue } from "@/lib/calculations";
 import { NEWS_ARTICLES, type Article } from "@/lib/news";
+import { MARKET_RATES } from "@/lib/market-rates";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -780,6 +782,56 @@ function ArticleSheet({ article, onClose }: { article: Article; onClose: () => v
   );
 }
 
+// ── Bank Rates Section ────────────────────────────────────────
+
+function BankRates() {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold text-text flex items-center gap-2">
+          <Activity size={16} className="text-accent" />
+          Taux du Marché
+        </h2>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green/10 text-green rounded-full border border-green/20">
+          <ArrowDown size={10} />
+          <span className="text-[10px] font-bold">-0.15% ce mois</span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto -mx-1 px-1">
+        <table className="w-full text-[11px]">
+          <thead>
+            <tr className="text-text-secondary border-b border-border/50">
+              <th className="text-left font-medium py-2">Banque</th>
+              <th className="text-center font-medium py-2">15 ans</th>
+              <th className="text-center font-medium py-2">20 ans</th>
+              <th className="text-center font-medium py-2">25 ans</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/30">
+            {MARKET_RATES.map((b) => (
+              <tr key={b.bank} className="group hover:bg-bg/50 transition-colors">
+                <td className="py-2.5 font-semibold text-text">{b.bank}</td>
+                <td className="py-2.5 text-center text-text-secondary">{b.rate15}%</td>
+                <td className="py-2.5 text-center text-accent font-bold">{b.rate20}%</td>
+                <td className="py-2.5 text-center text-text-secondary">{b.rate25}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="pt-2 flex items-center justify-between border-t border-border/50">
+        <div className="flex items-center gap-1.5 text-[9px] text-text-muted italic">
+          <Info size={10} />
+          <span>Mise à jour : Aujourd&apos;hui (Sources agrégées)</span>
+        </div>
+        <Link href="/taux" className="text-[10px] font-bold text-accent">Comparer tout</Link>
+      </div>
+    </div>
+  );
+}
+
 // ── News Section ─────────────────────────────────────────────
 
 function NewsCard({
@@ -997,6 +1049,9 @@ export default function DashboardPage() {
           {patrimoineNet > 0 && (
             <PatrimoineChart patrimoine={patrimoineNet} />
           )}
+
+          {/* Taux Bancaires */}
+          <BankRates />
 
           {/* Property list */}
           <div className="bg-card rounded-2xl p-4 border border-border">

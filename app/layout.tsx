@@ -31,9 +31,9 @@ export default function RootLayout({
       <body className={`${dmSans.variable} ${spaceMono.variable} font-sans antialiased`}>
         <ThemeProvider>
           <div className="min-h-screen bg-bg text-text">
-            <Header />
+            <div className="no-print"><Header /></div>
             <main className="pb-20">{children}</main>
-            <BottomNav />
+            <div className="no-print"><BottomNav /></div>
           </div>
         </ThemeProvider>
       </body>
