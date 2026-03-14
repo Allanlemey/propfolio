@@ -79,27 +79,6 @@ function Toast({
   );
 }
 
-// ── Section wrapper ────────────────────────────────────────────
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider px-1">
-        {title}
-      </h2>
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ── Toggle ────────────────────────────────────────────────────
 
 function Toggle({
@@ -277,7 +256,7 @@ export default function ProfilPage() {
 
   if (loading || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="relative min-h-screen bg-bg overflow-x-hidden flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     );
@@ -286,256 +265,241 @@ export default function ProfilPage() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <div className="px-4 pt-5 pb-8 max-w-2xl mx-auto space-y-5">
-      <h1 className="text-xl font-bold text-text">Profil</h1>
+    <div className="relative min-h-screen bg-bg overflow-x-hidden">
+      {/* Decorative background */}
+      <div className="absolute top-0 inset-x-0 h-[400px] bg-gradient-to-b from-accent/5 to-transparent pointer-events-none" />
+      <div className="absolute top-20 right-[-10%] w-[40%] h-[20%] bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-40 left-[-10%] w-[30%] h-[15%] bg-green/5 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* ── Section 1 — Mon compte ────────────────────────── */}
-      <Section title="Mon compte">
-        {/* Avatar + identity */}
-        <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
+      <div className="relative px-4 pt-8 pb-24 max-w-2xl mx-auto space-y-6">
+
+        {/* ── Header ──────────────────────────────────────── */}
+        <div className="flex items-end justify-between px-1">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black tracking-tight leading-none bg-gradient-to-r from-text to-text-secondary bg-clip-text text-transparent">
+              Mon Profil
+            </h1>
+            <div className="text-text-muted text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              Paramètres &amp; Compte
+            </div>
+          </div>
+          {/* Avatar compact */}
           <Avatar name={profile.name} email={profile.email} />
-          <div className="flex-1 min-w-0">
-            {editingName ? (
-              <input
-                ref={nameInputRef}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={handleNameBlur}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") nameInputRef.current?.blur();
-                }}
-                className="w-full text-sm font-semibold bg-bg border border-accent rounded-lg px-2 py-1 text-text outline-none"
-                autoFocus
-                placeholder="Votre prénom"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditingName(true)}
-                className="text-sm font-semibold text-text text-left hover:text-accent transition-colors"
-              >
-                {name || "Ajouter un prénom"}
-                <span className="ml-1.5 text-[10px] text-text-secondary font-normal">
-                  Modifier
-                </span>
-              </button>
-            )}
-            <p className="text-xs text-text-secondary mt-0.5 truncate">
-              {profile.email}
-            </p>
+        </div>
+
+        {/* ── Identity card ──────────────────────────────── */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest mb-1">Nom affiché</p>
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={handleNameBlur}
+                  onKeyDown={(e) => { if (e.key === "Enter") nameInputRef.current?.blur(); }}
+                  className="w-full text-base font-semibold bg-bg border border-accent rounded-lg px-2 py-1 text-text outline-none"
+                  autoFocus
+                  placeholder="Votre prénom"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingName(true)}
+                  className="text-base font-bold text-text text-left hover:text-accent transition-colors flex items-center gap-2"
+                >
+                  {name || "Ajouter un prénom"}
+                  <span className="text-[10px] text-text-secondary font-normal border border-border rounded-md px-1.5 py-0.5">
+                    Modifier
+                  </span>
+                </button>
+              )}
+              <p className="text-xs text-text-secondary mt-1 truncate">{profile.email}</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center justify-between w-full px-4 py-3.5 text-red hover:bg-red/5 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <LogOut size={16} strokeWidth={1.8} />
+              <span className="text-sm font-medium">Se déconnecter</span>
+            </div>
+            <ChevronRight size={14} className="text-text-secondary" />
+          </button>
         </div>
 
-        {/* Sign out */}
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="flex items-center justify-between w-full px-4 py-3.5 text-red hover:bg-red/5 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <LogOut size={16} strokeWidth={1.8} />
-            <span className="text-sm font-medium">Se déconnecter</span>
-          </div>
-          <ChevronRight size={14} className="text-text-secondary" />
-        </button>
-      </Section>
+        {/* ── Profil fiscal ──────────────────────────────── */}
+        <div className="space-y-2">
+          <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+            Profil fiscal
+          </h2>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="px-4 py-4 border-b border-border">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-3">Régime fiscal principal</p>
+              <div className="grid grid-cols-2 gap-2">
+                {REGIMES.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => handleRegimeChange(r)}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all active:scale-[0.97] ${
+                      regime === r
+                        ? "bg-accent/15 border-accent text-accent"
+                        : "bg-bg border-border text-text-secondary hover:border-accent/40 hover:text-text"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-      {/* ── Section 2 — Profil fiscal ─────────────────────── */}
-      <Section title="Mon profil fiscal">
-        {/* Regime selector */}
-        <div className="px-4 py-4 border-b border-border">
-          <p className="text-sm font-medium text-text mb-3">
-            Régime fiscal principal
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {REGIMES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => handleRegimeChange(r)}
-                className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all ${
-                  regime === r
-                    ? "bg-accent/15 border-accent text-accent"
-                    : "bg-bg border-border text-text-secondary hover:border-accent/40 hover:text-text"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="px-4 py-4 border-b border-border">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-3">Tranche marginale d&apos;imposition (TMI)</p>
+              <div className="flex gap-2">
+                {TMI_OPTIONS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => handleTmiChange(t)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold border transition-all active:scale-[0.97] ${
+                      tmi === t
+                        ? "bg-accent/15 border-accent text-accent"
+                        : "bg-bg border-border text-text-secondary hover:border-accent/40 hover:text-text"
+                    }`}
+                  >
+                    {t}%
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* TMI selector */}
-        <div className="px-4 py-4 border-b border-border">
-          <p className="text-sm font-medium text-text mb-3">
-            Tranche marginale d&apos;imposition (TMI)
-          </p>
-          <div className="flex gap-2">
-            {TMI_OPTIONS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => handleTmiChange(t)}
-                className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
-                  tmi === t
-                    ? "bg-accent/15 border-accent text-accent"
-                    : "bg-bg border-border text-text-secondary hover:border-accent/40 hover:text-text"
-                }`}
-              >
-                {t} %
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Info encart */}
-        <div className="flex gap-3 px-4 py-3.5">
-          <Info size={14} className="text-accent shrink-0 mt-0.5" />
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Votre TMI est utilisée pour estimer l&apos;impôt sur vos revenus
-            locatifs dans tous les calculs de cashflow net.
-          </p>
-        </div>
-      </Section>
-
-      {/* ── Section 3 — Notifications ─────────────────────── */}
-      <Section title="Notifications">
-        <Toggle
-          label="Rappel loyer"
-          description="Alerte si le loyer n'est pas encaissé"
-          checked={notifLoyer}
-          onChange={setNotifLoyer}
-          disabled
-        />
-        <Toggle
-          label="Rappel échéances"
-          description="TF, assurance, renouvellement de bail"
-          checked={notifEcheances}
-          onChange={setNotifEcheances}
-          disabled
-        />
-        <Toggle
-          label="Alerte cashflow négatif"
-          description="Notification si votre cashflow passe en négatif"
-          checked={notifCashflow}
-          onChange={setNotifCashflow}
-          disabled
-        />
-
-        {/* MVP notice */}
-        <div className="flex gap-3 px-4 py-3.5 border-t border-border">
-          <Bell size={14} className="text-text-secondary shrink-0 mt-0.5" />
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Les notifications seront disponibles prochainement.
-          </p>
-        </div>
-      </Section>
-
-      {/* ── Section 4 — Abonnement ────────────────────────── */}
-      <Section title="Mon abonnement">
-        {/* Current plan */}
-        <div className="px-4 py-4 border-b border-border">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-sm font-semibold text-text">Plan Gratuit</p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                1 bien · Cashflow brut uniquement
+            <div className="flex gap-3 px-4 py-3.5">
+              <Info size={14} className="text-accent shrink-0 mt-0.5" />
+              <p className="text-xs text-text-secondary leading-relaxed">
+                Votre TMI est utilisée pour estimer l&apos;impôt sur vos revenus locatifs dans tous les calculs de cashflow net.
               </p>
             </div>
-            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-border text-text-secondary border border-border">
+          </div>
+        </div>
+
+        {/* ── Notifications ──────────────────────────────── */}
+        <div className="space-y-2">
+          <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+            Notifications
+          </h2>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <Toggle label="Rappel loyer" description="Alerte si le loyer n'est pas encaissé" checked={notifLoyer} onChange={setNotifLoyer} disabled />
+            <Toggle label="Rappel échéances" description="TF, assurance, renouvellement de bail" checked={notifEcheances} onChange={setNotifEcheances} disabled />
+            <Toggle label="Alerte cashflow négatif" description="Notification si votre cashflow passe en négatif" checked={notifCashflow} onChange={setNotifCashflow} disabled />
+            <div className="flex gap-3 px-4 py-3.5 border-t border-border">
+              <Bell size={14} className="text-text-secondary shrink-0 mt-0.5" />
+              <p className="text-xs text-text-secondary leading-relaxed">Les notifications seront disponibles prochainement.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Abonnement ─────────────────────────────────── */}
+        <div className="space-y-2">
+          <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+            Abonnement
+          </h2>
+
+          {/* Current plan badge */}
+          <div className="bg-card rounded-2xl border border-border px-4 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-text">Plan Gratuit</p>
+              <p className="text-xs text-text-secondary mt-0.5">1 bien · Cashflow brut uniquement</p>
+            </div>
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-border/60 text-text-secondary border border-border">
               Actif
             </span>
           </div>
-        </div>
 
-        {/* Premium CTA */}
-        <div className="px-4 py-4 border-b border-border">
-          <button
-            type="button"
-            onClick={handlePremiumCta}
-            className="w-full py-3.5 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-            style={{
-              background: "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)",
-            }}
-          >
-            <Sparkles size={16} strokeWidth={2} />
-            Passer à Premium — 9 €/mois
-          </button>
-          <p className="text-[11px] text-text-secondary text-center mt-2">
-            ou 79 €/an (2 mois offerts)
-          </p>
-        </div>
-
-        {/* Premium features list */}
-        <div className="px-4 py-3">
-          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
-            Inclus dans Premium
-          </p>
-          <div className="space-y-2.5">
-            {PREMIUM_FEATURES.map((f) => (
-              <div key={f} className="flex items-center gap-2.5">
-                <div className="w-4 h-4 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
-                  <Check size={9} strokeWidth={3} className="text-accent" />
-                </div>
-                <span className="text-sm text-text">{f}</span>
+          {/* Premium CTA card */}
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div
+              className="px-4 py-5"
+              style={{ background: "linear-gradient(135deg, rgba(108,99,255,0.12) 0%, rgba(0,217,166,0.08) 100%)" }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={16} className="text-accent" strokeWidth={2} />
+                <p className="text-sm font-black text-text">Propfolio Premium</p>
               </div>
-            ))}
+              <div className="space-y-2 mb-4">
+                {PREMIUM_FEATURES.map((f) => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                      <Check size={9} strokeWidth={3} className="text-accent" />
+                    </div>
+                    <span className="text-xs text-text">{f}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handlePremiumCta}
+                className="w-full py-3.5 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg"
+                style={{ background: "linear-gradient(135deg, #6C63FF 0%, #00D9A6 100%)" }}
+              >
+                <Sparkles size={15} strokeWidth={2} />
+                Passer à Premium — 9 €/mois
+              </button>
+              <p className="text-[11px] text-text-secondary text-center mt-2">ou 79 €/an · 2 mois offerts</p>
+            </div>
           </div>
         </div>
-      </Section>
 
-      {/* ── Section 5 — À propos ──────────────────────────── */}
-      <Section title="À propos">
-        <div className="px-4 py-4 border-b border-border">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-medium text-text">Propfolio</p>
-            <span className="font-mono text-[11px] text-text-secondary">
-              MVP 1.0
-            </span>
+        {/* ── À propos ───────────────────────────────────── */}
+        <div className="space-y-2">
+          <h2 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+            À propos
+          </h2>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="px-4 py-4 border-b border-border flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-text">Propfolio</p>
+                <p className="text-xs text-text-secondary mt-0.5">Fait par un investisseur LMNP, pour les investisseurs LMNP.</p>
+              </div>
+              <span className="font-mono text-[11px] text-text-secondary border border-border rounded-lg px-2 py-1">v1.0</span>
+            </div>
+            <Link href="/cgu" className="flex items-center justify-between px-4 py-3.5 border-b border-border hover:bg-bg/50 transition-colors">
+              <div className="flex items-center gap-3 text-text-secondary">
+                <FileText size={15} strokeWidth={1.8} />
+                <span className="text-sm">Conditions générales d&apos;utilisation</span>
+              </div>
+              <ChevronRight size={14} className="text-text-secondary" />
+            </Link>
+            <Link href="/confidentialite" className="flex items-center justify-between px-4 py-3.5 border-b border-border hover:bg-bg/50 transition-colors">
+              <div className="flex items-center gap-3 text-text-secondary">
+                <Shield size={15} strokeWidth={1.8} />
+                <span className="text-sm">Politique de confidentialité</span>
+              </div>
+              <ChevronRight size={14} className="text-text-secondary" />
+            </Link>
+            <Link href="/contact" className="flex items-center justify-between px-4 py-3.5 hover:bg-bg/50 transition-colors">
+              <div className="flex items-center gap-3 text-text-secondary">
+                <Mail size={15} strokeWidth={1.8} />
+                <span className="text-sm">Contact</span>
+              </div>
+              <ChevronRight size={14} className="text-text-secondary" />
+            </Link>
           </div>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Fait par un investisseur LMNP, pour les investisseurs LMNP.
-          </p>
         </div>
 
-        <Link
-          href="/cgu"
-          className="flex items-center justify-between px-4 py-3.5 border-b border-border hover:bg-bg/50 transition-colors"
-        >
-          <div className="flex items-center gap-3 text-text-secondary">
-            <FileText size={15} strokeWidth={1.8} />
-            <span className="text-sm">Conditions générales d&apos;utilisation</span>
-          </div>
-          <ChevronRight size={14} className="text-text-secondary" />
-        </Link>
-
-        <Link
-          href="/confidentialite"
-          className="flex items-center justify-between px-4 py-3.5 border-b border-border hover:bg-bg/50 transition-colors"
-        >
-          <div className="flex items-center gap-3 text-text-secondary">
-            <Shield size={15} strokeWidth={1.8} />
-            <span className="text-sm">Politique de confidentialité</span>
-          </div>
-          <ChevronRight size={14} className="text-text-secondary" />
-        </Link>
-
-        <Link
-          href="/contact"
-          className="flex items-center justify-between px-4 py-3.5 hover:bg-bg/50 transition-colors"
-        >
-          <div className="flex items-center gap-3 text-text-secondary">
-            <Mail size={15} strokeWidth={1.8} />
-            <span className="text-sm">Contact</span>
-          </div>
-          <ChevronRight size={14} className="text-text-secondary" />
-        </Link>
-      </Section>
-
-      <p className="text-[11px] text-text-secondary text-center pb-2">
-        Calculs fiscaux indicatifs. Consultez un expert-comptable.
-      </p>
+        <p className="text-[11px] text-text-secondary text-center pb-2">
+          Calculs fiscaux indicatifs. Consultez un expert-comptable.
+        </p>
+      </div>
 
       {/* Toast */}
       <Toast visible={toast.visible} message={toast.message} type={toast.type} />

@@ -280,146 +280,147 @@ function TabOverview({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Infos bien */}
-      <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
-        <p className="text-sm font-semibold text-text">Informations du bien</p>
-        {infoRows.map((row) => (
-          <div
-            key={row.label}
-            className="flex justify-between items-start gap-4"
-          >
-            <span className="text-sm text-text-secondary shrink-0">
-              {row.label}
-            </span>
-            <span
-              className={`text-sm text-right font-mono ${
-                row.valueClass ?? "text-text"
-              }`}
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+          Informations du bien
+        </h3>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          {infoRows.map((row, i) => (
+            <div
+              key={row.label}
+              className={`flex justify-between items-start gap-4 px-4 py-3 ${i < infoRows.length - 1 ? "border-b border-border" : ""}`}
             >
-              {row.value}
-            </span>
-          </div>
-        ))}
+              <span className="text-sm text-text-secondary shrink-0">{row.label}</span>
+              <span className={`text-sm text-right font-mono font-medium ${row.valueClass ?? "text-text"}`}>
+                {row.value}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Prix marché */}
       {(marketLoading || marketData) && (
-        <div className="bg-card rounded-2xl p-4 border border-border">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={14} className="text-accent" />
-            <p className="text-sm font-semibold text-text">Prix du marché local</p>
-          </div>
-
-          {marketLoading ? (
-            <div className="flex items-center gap-2 py-1">
-              <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-              <span className="text-xs text-text-secondary">Chargement des données DVF…</span>
-            </div>
-          ) : marketData ? (
-            <>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="font-mono font-bold text-2xl text-text">
-                  {marketData.prixM2.toLocaleString("fr-FR")} €
-                </span>
-                <span className="text-sm text-text-secondary">/m² à {marketData.city}</span>
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            Marché local
+          </h3>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            {marketLoading ? (
+              <div className="flex items-center gap-2 px-4 py-4">
+                <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                <span className="text-xs text-text-secondary">Chargement des données DVF…</span>
               </div>
-              <p className="text-[11px] text-text-secondary mb-3">
-                {marketData.min.toLocaleString("fr-FR")} – {marketData.max.toLocaleString("fr-FR")} €/m²
-                &nbsp;·&nbsp;{marketData.count} ventes
-                {marketData.lastUpdate ? ` · ${marketData.lastUpdate}` : ""}
-                &nbsp;· Source DVF data.gouv.fr
-              </p>
-
-              {property.surface && property.surface > 0 && (() => {
-                const propM2 = property.current_value / property.surface;
-                const delta = ((propM2 - marketData.prixM2) / marketData.prixM2) * 100;
-                const isAbove = delta > 5;
-                const isBelow = delta < -5;
-                return (
-                  <div className={`rounded-xl p-3 flex items-center justify-between ${
-                    isAbove ? "bg-red/8 border border-red/20"
-                    : isBelow ? "bg-green/8 border border-green/20"
-                    : "bg-border/30 border border-border"
-                  }`}>
-                    <div>
-                      <p className={`text-xs font-semibold ${isAbove ? "text-red" : isBelow ? "text-green" : "text-text-secondary"}`}>
-                        {isAbove ? "Au-dessus du marché" : isBelow ? "Potentiel de revalorisation" : "Dans les prix du marché"}
-                      </p>
-                      <p className="text-[11px] text-text-secondary mt-0.5">
-                        Votre bien : {Math.round(propM2).toLocaleString("fr-FR")} €/m²
-                      </p>
-                    </div>
-                    <span className={`font-mono font-bold text-lg ${isAbove ? "text-red" : isBelow ? "text-green" : "text-text"}`}>
-                      {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
+            ) : marketData ? (
+              <div className="p-4 space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="font-mono font-black text-2xl text-text">
+                      {marketData.prixM2.toLocaleString("fr-FR")} €
                     </span>
+                    <span className="text-sm text-text-secondary ml-1">/m²</span>
                   </div>
-                );
-              })()}
-            </>
-          ) : null}
+                  <span className="text-xs text-text-secondary font-medium">{marketData.city}</span>
+                </div>
+                <p className="text-[11px] text-text-secondary">
+                  {marketData.min.toLocaleString("fr-FR")} – {marketData.max.toLocaleString("fr-FR")} €/m²
+                  &nbsp;·&nbsp;{marketData.count} ventes
+                  {marketData.lastUpdate ? ` · ${marketData.lastUpdate}` : ""}
+                  &nbsp;· DVF data.gouv.fr
+                </p>
+
+                {property.surface && property.surface > 0 && (() => {
+                  const propM2 = property.current_value / property.surface;
+                  const delta = ((propM2 - marketData.prixM2) / marketData.prixM2) * 100;
+                  const isAbove = delta > 5;
+                  const isBelow = delta < -5;
+                  return (
+                    <div className={`rounded-xl p-3 flex items-center justify-between ${
+                      isAbove ? "bg-red/8 border border-red/20"
+                      : isBelow ? "bg-green/8 border border-green/20"
+                      : "bg-border/30 border border-border"
+                    }`}>
+                      <div>
+                        <p className={`text-xs font-bold ${isAbove ? "text-red" : isBelow ? "text-green" : "text-text-secondary"}`}>
+                          {isAbove ? "Au-dessus du marché" : isBelow ? "Potentiel de revalorisation" : "Dans les prix du marché"}
+                        </p>
+                        <p className="text-[11px] text-text-secondary mt-0.5">
+                          Votre bien : {Math.round(propM2).toLocaleString("fr-FR")} €/m²
+                        </p>
+                      </div>
+                      <span className={`font-mono font-black text-xl ${isAbove ? "text-red" : isBelow ? "text-green" : "text-text"}`}>
+                        {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 
       {/* Crédit */}
-      {loan ? (
-        <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
-          <p className="text-sm font-semibold text-text">Crédit immobilier</p>
-          {[
-            { label: "Montant initial", value: `${fmt(loan.amount ?? 0)} €` },
-            { label: "Taux", value: `${loan.rate ?? 0} %` },
-            { label: "Durée totale", value: `${loan.duration_years ?? 0} ans` },
-            { label: "Mensualité", value: `${fmt(loan.monthly_payment)} €/mois` },
-            { label: "Capital restant dû", value: `${fmt(loan.remaining_capital ?? 0)} €` },
-          ].map((row) => (
-            <div key={row.label} className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">{row.label}</span>
-              <span className="text-sm font-mono text-text">{row.value}</span>
-            </div>
-          ))}
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+          Financement
+        </h3>
+        {loan ? (
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            {[
+              { label: "Montant initial", value: `${fmt(loan.amount ?? 0)} €` },
+              { label: "Taux d'intérêt", value: `${loan.rate ?? 0} %` },
+              { label: "Durée totale", value: `${loan.duration_years ?? 0} ans` },
+              { label: "Mensualité", value: `${fmt(loan.monthly_payment)} €/mois` },
+              { label: "Capital restant dû", value: `${fmt(loan.remaining_capital ?? 0)} €` },
+            ].map((row, i, arr) => (
+              <div key={row.label} className={`flex justify-between items-center px-4 py-3 ${i < arr.length - 1 ? "border-b border-border" : ""}`}>
+                <span className="text-sm text-text-secondary">{row.label}</span>
+                <span className="text-sm font-mono font-semibold text-text">{row.value}</span>
+              </div>
+            ))}
 
-          {remainingMonthsLabel && (
-            <div className="flex justify-between items-center py-2 px-3 bg-accent/6 rounded-xl border border-accent/20">
-              <span className="text-sm text-text-secondary">Mensualités restantes</span>
-              <div className="text-right">
-                <span className="text-sm font-mono font-bold text-accent">
-                  {remainingMonths} mois
-                </span>
-                <span className="text-[10px] text-text-secondary block">
-                  {remainingMonthsLabel}{endDate ? ` · fin ${endDate}` : ""}
-                </span>
+            {remainingMonthsLabel && (
+              <div className="mx-4 mb-4 mt-1 flex justify-between items-center py-2.5 px-3 bg-accent/8 rounded-xl border border-accent/20">
+                <span className="text-sm text-text-secondary">Échéance</span>
+                <div className="text-right">
+                  <span className="text-sm font-mono font-black text-accent">{remainingMonths} mois</span>
+                  <span className="text-[10px] text-text-secondary block">
+                    {remainingMonthsLabel}{endDate ? ` · fin ${endDate}` : ""}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 pb-4">
+              <div className="flex justify-between text-xs text-text-secondary mb-2">
+                <span>Progression du remboursement</span>
+                <span className="font-bold text-text">{loanProgress} %</span>
+              </div>
+              <div className="h-3 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${loanProgress}%`, background: "linear-gradient(to right, #6C63FF, #00D9A6)" }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-text-secondary mt-1.5">
+                <span>{fmt(loan.amount ?? 0)} € emprunté</span>
+                <span>{fmt(loan.remaining_capital ?? 0)} € restant</span>
               </div>
             </div>
-          )}
-
-          <div>
-            <div className="flex justify-between text-xs text-text-secondary mb-1.5">
-              <span>Remboursement</span>
-              <span className="font-semibold text-text">{loanProgress} % remboursé</span>
-            </div>
-            <div className="h-2.5 bg-border rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${loanProgress}%`,
-                  background: "linear-gradient(to right, #6C63FF, #00D9A6)",
-                }}
-              />
-            </div>
-            <div className="flex justify-between text-[10px] text-text-secondary mt-1">
-              <span>{fmt(loan.amount ?? 0)} € emprunté</span>
-              <span>{fmt(loan.remaining_capital ?? 0)} € restant</span>
-            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex gap-3 p-4 bg-accent/5 border border-accent/20 rounded-2xl">
-          <Info size={16} className="text-accent shrink-0 mt-0.5" />
-          <p className="text-sm text-text-secondary">
-            Achat comptant — aucun crédit associé à ce bien.
-          </p>
-        </div>
-      )}
+        ) : (
+          <div className="flex gap-3 p-4 bg-accent/5 border border-accent/20 rounded-2xl">
+            <Info size={16} className="text-accent shrink-0 mt-0.5" />
+            <p className="text-sm text-text-secondary">Achat comptant — aucun crédit associé à ce bien.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -436,81 +437,68 @@ function TabCashflow({
   tmi: number;
 }) {
   const positive = total >= 0;
+  const maxAbs = Math.max(...lines.map((l) => Math.abs(l.amount)), 1);
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-2xl p-4 border border-border">
-        <p className="text-sm font-semibold text-text mb-4">
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
           Décomposition mensuelle
-        </p>
-
-        <div className="space-y-3">
+        </h3>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           {lines.map((line, i) => {
             const amtPositive = line.amount >= 0;
             const colorClass =
-              line.color === "green"
-                ? "text-green"
-                : line.color === "yellow"
-                ? "text-[#FBBF24]"
-                : "text-red";
-            const dotClass =
-              line.color === "green"
-                ? "bg-green"
-                : line.color === "yellow"
-                ? "bg-[#FBBF24]"
-                : "bg-red";
+              line.color === "green" ? "text-green"
+              : line.color === "yellow" ? "text-[#FBBF24]"
+              : "text-red";
+            const barColor =
+              line.color === "green" ? "var(--green)"
+              : line.color === "yellow" ? "#FBBF24"
+              : "var(--red)";
+            const barPct = (Math.abs(line.amount) / maxAbs) * 100;
 
             return (
               <div
                 key={i}
-                className={`flex items-center justify-between ${
-                  line.color === "yellow" ? "italic" : ""
-                }`}
+                className={`px-4 py-3 ${i < lines.length - 1 ? "border-b border-border" : ""} ${line.color === "yellow" ? "opacity-80" : ""}`}
               >
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`}
-                  />
-                  <span className="text-sm text-text-secondary">
-                    {line.label}
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm text-text-secondary">{line.label}</span>
+                  <span className={`font-mono text-sm font-bold ${colorClass}`}>
+                    {amtPositive ? "+" : "−"}{fmt(line.amount)} €
                   </span>
                 </div>
-                <span
-                  className={`font-mono text-sm font-semibold ${colorClass}`}
-                >
-                  {amtPositive ? "+" : "−"}
-                  {fmt(line.amount)} €
-                </span>
+                <div className="h-1.5 bg-border/50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${barPct}%`, background: barColor, opacity: 0.7 }}
+                  />
+                </div>
               </div>
             );
           })}
         </div>
+      </div>
 
-        <div className="mt-4 pt-4 border-t border-border">
-          <div
-            className={`rounded-xl p-4 ${
-              positive
-                ? "bg-green/10 border border-green/20"
-                : "bg-red/10 border border-red/20"
-            }`}
-          >
-            <p
-              className={`text-xs font-semibold uppercase tracking-wide mb-1 ${
-                positive ? "text-green" : "text-red"
-              }`}
-            >
+      {/* Total */}
+      <div
+        className={`rounded-2xl p-5 border ${
+          positive ? "bg-green/8 border-green/25" : "bg-red/8 border-red/25"
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={`text-xs font-black uppercase tracking-widest mb-1 ${positive ? "text-green" : "text-red"}`}>
               Cashflow net réel
             </p>
-            <p
-              className={`font-mono font-bold text-2xl ${
-                positive ? "text-green" : "text-red"
-              }`}
-            >
-              {positive ? "+" : "−"}
-              {fmt(total)} €
-              <span className="text-sm font-normal ml-1 opacity-70">/mois</span>
-            </p>
+            <p className="text-[11px] text-text-secondary">Après charges, crédit &amp; impôts</p>
           </div>
+          <p className={`font-mono font-black text-3xl ${positive ? "text-green" : "text-red"}`}>
+            {positive ? "+" : "−"}{fmt(total)}
+            <span className="text-sm font-normal ml-1 opacity-60">€</span>
+          </p>
         </div>
       </div>
 
@@ -535,63 +523,72 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
   const improvements = getImprovements(scores);
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-2xl p-6 border border-border flex flex-col items-center gap-3">
-        <ScoreRing score={scores.global} size={140} />
-        <p className="text-sm text-text-secondary text-center max-w-xs">
-          {scoreSummary(
-            scores.global,
-            scores.cashflow > 55 ? 1 : -1
-          )}
-        </p>
-      </div>
-
-      <div className="bg-card rounded-2xl p-4 border border-border space-y-4">
-        <p className="text-sm font-semibold text-text">Détail par critère</p>
-        {CRITERIA.map(({ key, label, weight }) => {
-          const val = scores[key];
-          const barColor =
-            val >= 80
-              ? "bg-green"
-              : val >= 60
-              ? "bg-accent"
-              : val >= 40
-              ? "bg-[#FBBF24]"
-              : "bg-red";
-          return (
-            <div key={key}>
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className="text-text-secondary">
-                  {label}{" "}
-                  <span className="opacity-50">({weight} %)</span>
-                </span>
-                <span className="font-mono font-bold text-text">{val}</span>
-              </div>
-              <div className="h-2 bg-border rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${barColor} rounded-full transition-all duration-700`}
-                  style={{ width: `${val}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {improvements.length > 0 && (
-        <div className="bg-card rounded-2xl p-4 border border-border">
-          <p className="text-sm font-semibold text-text mb-3">
-            Pistes d&apos;amélioration
+    <div className="space-y-3">
+      {/* Score ring hero */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${scoreColor(scores.global)}, ${scoreColor(scores.global)}50)` }} />
+        <div className="p-6 flex flex-col items-center gap-3">
+          <ScoreRing score={scores.global} size={140} />
+          <p className="text-sm text-text-secondary text-center max-w-xs leading-relaxed">
+            {scoreSummary(scores.global, scores.cashflow > 55 ? 1 : -1)}
           </p>
-          <div className="space-y-3">
+        </div>
+      </div>
+
+      {/* Critères */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+          Détail par critère
+        </h3>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          {CRITERIA.map(({ key, label, weight }, i) => {
+            const val = scores[key];
+            const barColor =
+              val >= 80 ? "var(--green)"
+              : val >= 60 ? "var(--accent)"
+              : val >= 40 ? "#FBBF24"
+              : "var(--red)";
+            const textColor =
+              val >= 80 ? "text-green"
+              : val >= 60 ? "text-accent"
+              : val >= 40 ? "text-[#FBBF24]"
+              : "text-red";
+            return (
+              <div key={key} className={`px-4 py-3.5 ${i < CRITERIA.length - 1 ? "border-b border-border" : ""}`}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-text-secondary">
+                    {label}
+                    <span className="ml-1 text-[10px] opacity-50">·{weight}%</span>
+                  </span>
+                  <span className={`font-mono font-black text-base ${textColor}`}>{val}<span className="text-[10px] font-normal opacity-60">/100</span></span>
+                </div>
+                <div className="h-2 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${val}%`, background: barColor }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Pistes d'amélioration */}
+      {improvements.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24]" />
+            Pistes d&apos;amélioration
+          </h3>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
             {improvements.map((tip, i) => (
-              <div key={i} className="flex gap-3">
-                <div className="w-5 h-5 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+              <div key={i} className={`flex gap-3 px-4 py-3.5 ${i < improvements.length - 1 ? "border-b border-border" : ""}`}>
+                <div className="w-5 h-5 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">
                   {i + 1}
                 </div>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  {tip}
-                </p>
+                <p className="text-sm text-text-secondary leading-relaxed">{tip}</p>
               </div>
             ))}
           </div>
@@ -1401,39 +1398,40 @@ export default function BienDetailPage() {
   const TABS = ["Vue d'ensemble", "Cashflow", "Score"];
 
   return (
-    <div className="min-h-screen bg-bg pb-24">
-      {/* Custom sticky header */}
-      <div className="sticky top-0 z-40 bg-card border-b border-border">
-        <div className="flex items-center gap-3 px-4 py-3.5">
+    <div className="relative min-h-screen bg-bg overflow-x-hidden pb-24">
+      {/* Decorative background */}
+      <div className="absolute top-0 inset-x-0 h-[350px] bg-gradient-to-b from-accent/5 to-transparent pointer-events-none" />
+      <div className="absolute top-16 right-[-10%] w-[40%] h-[20%] bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-40 left-[-10%] w-[30%] h-[15%] bg-green/5 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* Sticky header */}
+      <div className="sticky top-0 z-40 glass">
+        <div className="flex items-center gap-2.5 px-4 py-3 max-w-2xl mx-auto">
           <Link
             href="/biens"
-            className="w-9 h-9 rounded-xl bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-text transition-colors shrink-0"
+            className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary hover:text-text transition-colors shrink-0"
           >
             <ArrowLeft size={16} />
           </Link>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-text truncate">
-              {property.name}
-            </p>
+            <p className="text-sm font-bold text-text truncate">{property.name}</p>
             {property.regime && (
               <p className="text-[11px] text-text-secondary">{property.regime}</p>
             )}
           </div>
-          <div
-            className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${scoreTextClass} ${scoreBgClass}`}
-          >
+          <div className={`font-mono text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 ${scoreTextClass} ${scoreBgClass}`}>
             {scores.global}/100
           </div>
           <button
             onClick={openEdit}
-            className="w-9 h-9 rounded-xl bg-bg border border-border flex items-center justify-center text-text-secondary hover:text-accent transition-colors shrink-0"
+            className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary hover:text-accent transition-colors shrink-0"
             aria-label="Modifier"
           >
             <Pencil size={15} />
           </button>
           <button
             onClick={() => setDeleteOpen(true)}
-            className="w-9 h-9 rounded-xl bg-bg border border-[#FF6B6B]/30 flex items-center justify-center text-[#FF6B6B]/70 hover:text-[#FF6B6B] hover:border-[#FF6B6B] transition-colors shrink-0"
+            className="w-9 h-9 rounded-xl bg-card border border-red/30 flex items-center justify-center text-red/60 hover:text-red hover:border-red transition-colors shrink-0"
             aria-label="Supprimer"
           >
             <Trash2 size={15} />
@@ -1441,67 +1439,75 @@ export default function BienDetailPage() {
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-4 max-w-2xl mx-auto">
-        {/* Score summary card */}
-        <div className="bg-card rounded-2xl p-4 border border-border flex gap-4 items-center">
-          <ScoreRing score={scores.global} size={80} />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-text-secondary leading-relaxed mb-2">
-              {scoreSummary(scores.global, cashflowTotal)}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="text-[10px] px-2 py-0.5 bg-bg border border-border rounded-full text-text-secondary">
-                {TYPE_LABEL[property.type] ?? property.type}
-              </span>
-              {property.surface && (
-                <span className="text-[10px] px-2 py-0.5 bg-bg border border-border rounded-full text-text-secondary">
-                  {property.surface} m²
+      <div className="relative px-4 pt-5 space-y-3 max-w-2xl mx-auto">
+
+        {/* Hero card */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${scoreColor(scores.global)}, ${scoreColor(scores.global)}60)` }} />
+          <div className="p-4 flex gap-4 items-center">
+            <ScoreRing score={scores.global} size={88} />
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {scoreSummary(scores.global, cashflowTotal)}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] px-2 py-0.5 bg-bg border border-border rounded-full text-text-secondary font-medium">
+                  {TYPE_LABEL[property.type] ?? property.type}
                 </span>
-              )}
-              {property.address && (
-                <span className="text-[10px] px-2 py-0.5 bg-bg border border-border rounded-full text-text-secondary truncate max-w-[160px]">
-                  {property.address.split(",").pop()?.trim() ??
-                    property.address}
-                </span>
-              )}
+                {property.surface && (
+                  <span className="text-[10px] px-2 py-0.5 bg-bg border border-border rounded-full text-text-secondary font-medium">
+                    {property.surface} m²
+                  </span>
+                )}
+                {property.dpe && (
+                  <span className="text-[10px] px-2 py-0.5 bg-accent/10 border border-accent/20 rounded-full text-accent font-bold">
+                    DPE {property.dpe}
+                  </span>
+                )}
+                {property.address && (
+                  <span className="text-[10px] px-2 py-0.5 bg-bg border border-border rounded-full text-text-secondary truncate max-w-[160px]">
+                    {property.address.split(",").pop()?.trim() ?? property.address}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 3 KPI cards */}
+        {/* KPI cards */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-card rounded-2xl p-3 border border-border">
-            <p className="text-[10px] text-text-secondary uppercase tracking-wide mb-1 leading-tight">
-              Cashflow net
-            </p>
-            <p
-              className={`font-mono font-bold text-base leading-tight ${
-                cfPositive ? "text-green" : "text-red"
-              }`}
-            >
-              {cfPositive ? "+" : "−"}
-              {fmt(cashflowTotal)} €
-            </p>
-            <p className="text-[10px] text-text-secondary">/mois</p>
-          </div>
-          <div className="bg-card rounded-2xl p-3 border border-border">
-            <p className="text-[10px] text-text-secondary uppercase tracking-wide mb-1 leading-tight">
-              Rendement net
-            </p>
-            <p className="font-mono font-bold text-base leading-tight text-text">
-              {rendementNet.toFixed(1)} %
-            </p>
-            <p className="text-[10px] text-text-secondary">annuel</p>
-          </div>
-          <div className="bg-card rounded-2xl p-3 border border-border">
-            <p className="text-[10px] text-text-secondary uppercase tracking-wide mb-1 leading-tight">
-              Capital /mois
-            </p>
-            <p className="font-mono font-bold text-base leading-tight text-green">
-              +{fmt(monthlyPrincipal)} €
-            </p>
-            <p className="text-[10px] text-text-secondary">remboursé</p>
-          </div>
+          {[
+            {
+              label: "Cashflow net",
+              value: `${cfPositive ? "+" : "−"}${fmt(cashflowTotal)}`,
+              unit: "€ / mois",
+              color: cfPositive ? "var(--green)" : "var(--red)",
+              textClass: cfPositive ? "text-green" : "text-red",
+            },
+            {
+              label: "Rendement",
+              value: rendementNet.toFixed(1),
+              unit: "% annuel",
+              color: "var(--accent)",
+              textClass: "text-accent",
+            },
+            {
+              label: "Capital",
+              value: `+${fmt(monthlyPrincipal)}`,
+              unit: "€ / mois",
+              color: "var(--green)",
+              textClass: "text-green",
+            },
+          ].map((kpi, i) => (
+            <div key={i} className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="h-[3px] w-full" style={{ background: kpi.color }} />
+              <div className="p-3">
+                <p className="text-[10px] text-text-secondary uppercase tracking-wide mb-1.5 leading-tight font-medium">{kpi.label}</p>
+                <p className={`font-mono font-black text-base leading-tight ${kpi.textClass}`}>{kpi.value}</p>
+                <p className="text-[10px] text-text-secondary mt-0.5">{kpi.unit}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Tab switcher */}
@@ -1518,8 +1524,8 @@ export default function BienDetailPage() {
               key={t}
               type="button"
               onClick={() => setTab(i)}
-              className={`relative z-10 flex-1 py-2 text-xs font-medium rounded-lg transition-colors duration-200 ${
-                tab === i ? "text-text" : "text-text-secondary"
+              className={`relative z-10 flex-1 py-2 text-xs font-semibold rounded-lg transition-colors duration-200 ${
+                tab === i ? "text-accent" : "text-text-secondary"
               }`}
             >
               {t}
