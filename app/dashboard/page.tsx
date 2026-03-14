@@ -378,7 +378,7 @@ function PatrimoineChart({ patrimoine }: { patrimoine: number }) {
                 fontWeight={700}
                 className="tracking-tighter"
               >
-                {d.shortLabel}
+                {d.label}
               </text>
             ))}
 
