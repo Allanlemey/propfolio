@@ -126,7 +126,7 @@ function KpiCard({
   return (
     <button
       onClick={onClick}
-      className={`relative overflow-hidden bg-card rounded-[22px] p-3.5 text-left flex flex-col gap-1.5 w-full min-w-0 transition-all duration-300 active:scale-[0.96] border shadow-sm ${
+      className={`relative overflow-hidden bg-card rounded-[22px] p-3.5 text-left flex flex-col gap-1.5 w-full min-w-0 transition-all duration-300 hover:scale-[1.03] active:scale-[0.96] border shadow-sm ${
         active
           ? "border-transparent ring-2 ring-offset-2 ring-offset-bg"
           : "border-border/60 hover:border-accent/40 hover:shadow-md"
