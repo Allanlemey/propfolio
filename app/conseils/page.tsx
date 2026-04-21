@@ -56,9 +56,16 @@ function ArticleSheet({ article, onClose }: { article: Article; onClose: () => v
   );
 }
 
+const CATEGORIES = ["Tous", "Fiscalité", "Marché", "Réglementation", "Financement"];
+
 export default function ConseilsPage() {
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState("Tous");
   const activeArticle = NEWS_ARTICLES.find(a => a.id === activeArticleId);
+
+  const filteredArticles = activeCategory === "Tous"
+    ? NEWS_ARTICLES
+    : NEWS_ARTICLES.filter(a => a.category === activeCategory);
 
   return (
     <div className="px-4 pt-5 pb-20 max-w-2xl mx-auto space-y-6">
@@ -69,25 +76,42 @@ export default function ConseilsPage() {
         </Link>
         <div>
           <h1 className="text-xl font-bold text-text leading-tight">Conseils & Actualités</h1>
-          <p className="text-text-secondary text-sm">Développez votre patrimoine immobilier</p>
+          <p className="text-text-secondary text-sm">{NEWS_ARTICLES.length} articles · Patrimoine immobilier</p>
         </div>
       </div>
 
       {/* Categories */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-        {["Tous", "Fiscalité", "Marché", "Réglementation", "Financement"].map(cat => (
-          <button key={cat} className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-colors ${cat === "Tous" ? "bg-accent text-white border-accent" : "bg-card text-text-secondary border-border hover:border-accent/40"}`}>
-            {cat}
-          </button>
-        ))}
+        {CATEGORIES.map(cat => {
+          const count = cat === "Tous" ? NEWS_ARTICLES.length : NEWS_ARTICLES.filter(a => a.category === cat).length;
+          const active = activeCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                active ? "bg-accent text-white border-accent shadow-sm shadow-accent/20" : "bg-card text-text-secondary border-border hover:border-accent/40"
+              }`}
+            >
+              {cat}
+              {count > 0 && (
+                <span className={`font-mono text-[10px] ${active ? "opacity-70" : "text-text-muted"}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Articles Grid */}
       <div className="grid grid-cols-1 gap-4">
-        {NEWS_ARTICLES.map(art => {
+        {filteredArticles.length === 0 ? (
+          <div className="text-center py-12 text-text-secondary text-sm">Aucun article dans cette catégorie.</div>
+        ) : filteredArticles.map(art => {
           const Icon = art.icon;
           return (
-            <div 
+            <div
               key={art.id}
               onClick={() => setActiveArticleId(art.id)}
               className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all group active:scale-[0.99] cursor-pointer"

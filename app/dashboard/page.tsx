@@ -126,26 +126,28 @@ function KpiCard({
   return (
     <button
       onClick={onClick}
-      className={`relative overflow-hidden bg-card rounded-[22px] p-3.5 text-left flex flex-col gap-1.5 w-full min-w-0 transition-all duration-300 hover:scale-[1.03] active:scale-[0.96] border shadow-sm ${
+      className={`relative overflow-hidden bg-card rounded-[22px] p-3.5 text-left flex flex-col gap-1.5 w-full min-w-0 border shadow-sm ${
         active
-          ? "border-transparent ring-2 ring-offset-2 ring-offset-bg"
-          : "border-border/60 hover:border-accent/40 hover:shadow-md"
+          ? "border-transparent scale-[1.04] -translate-y-0.5 shadow-lg"
+          : "border-border/60 hover:scale-[1.03] hover:border-accent/40 hover:shadow-md active:scale-[0.96]"
       }`}
       style={{
-        boxShadow: active ? `0 10px 25px -5px ${c.glow}, 0 8px 10px -6px ${c.glow}` : undefined,
+        boxShadow: active ? `0 14px 30px -6px ${c.glow}, 0 6px 12px -4px ${c.glow}` : undefined,
         borderColor: active ? c.main : undefined,
-        transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        transition: "all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}
     >
       {/* Decorative gradient corner */}
       <div
-        className="absolute -right-4 -top-4 w-12 h-12 rounded-full opacity-10 blur-xl"
-        style={{ background: c.grad1 }}
+        className="absolute -right-4 -top-4 w-16 h-16 rounded-full blur-xl transition-opacity duration-300"
+        style={{ background: c.grad1, opacity: active ? 0.22 : 0.08 }}
       />
 
-      {active && (
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-white/5 pointer-events-none" />
-      )}
+      {/* Color tint overlay when active */}
+      <div
+        className="absolute inset-0 pointer-events-none rounded-[22px] transition-opacity duration-300"
+        style={{ opacity: active ? 1 : 0, background: `linear-gradient(145deg, ${c.grad1}18 0%, transparent 60%)` }}
+      />
 
       {/* Header: icon + label */}
       <div className="flex items-center justify-between gap-1 z-10 min-w-0">
@@ -158,7 +160,8 @@ function KpiCard({
           </div>
           <span className="text-text-secondary text-[9px] font-bold tracking-[0.06em] uppercase truncate">{label}</span>
         </div>
-        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all ${active ? "bg-accent text-white" : "bg-bg text-border"}`}>
+        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all ${active ? "text-white" : "bg-bg text-border"}`}
+          style={active ? { background: c.main } : undefined}>
             <ChevronRight size={8} strokeWidth={3} />
         </div>
       </div>
@@ -975,9 +978,6 @@ export default function DashboardPage() {
   const projection10ans = entries.reduce((s, e) => {
     return s + e.property.current_value * Math.pow(1.02, 10) - (e.loan ? projectRemainingCapital(e.loan, 10) : 0);
   }, 0);
-
-  const growthPct = patrimoineNet > 0
-    ? ((patrimoineNet - patrimoineNet / Math.pow(1.015, 11)) / (patrimoineNet / Math.pow(1.015, 11))) * 100 : 0;
 
   function toggleKpi(k: KpiKey) {
     setActiveKpi(prev => prev === k ? null : k);
