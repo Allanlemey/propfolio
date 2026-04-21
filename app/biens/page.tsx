@@ -165,7 +165,7 @@ function PropertyCard({
                 </div>
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${style.text} ${style.bg} border border-current opacity-10`} style={{ borderColor: 'currentColor' }}>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${style.text} ${style.bg}`}>
                     Score {score}
                 </div>
                 {property.dpe && (

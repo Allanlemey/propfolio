@@ -16,7 +16,7 @@ export function Header() {
   const alertesActive = pathname === "/alertes";
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-5 py-4 bg-card border-b border-border">
+    <header className="sticky top-0 z-40 flex items-center justify-between px-5 py-4 glass">
       {/* Logo */}
       <Link href="/dashboard" className="font-mono font-bold text-xl tracking-tight">
         <span style={{ color: "var(--accent)" }}>Prop</span>

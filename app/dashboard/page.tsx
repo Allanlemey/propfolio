@@ -669,11 +669,12 @@ function EmptyState() {
 
 // ── Property Row ─────────────────────────────────────────────
 
-function PropertyRow({ entry }: { entry: Entry }) {
+function PropertyRow({ entry, maxCashflow }: { entry: Entry; maxCashflow: number }) {
   const { property, revenue, cashflow, score } = entry;
   const Icon = TYPE_ICONS[property.type] ?? Building2;
   const { text, bg } = scoreStyle(score);
   const cfPositive = cashflow >= 0;
+  const barPct = maxCashflow > 0 ? Math.min(Math.abs(cashflow) / maxCashflow * 100, 100) : 0;
 
   return (
     <Link href={`/biens/${property.id}`}>
@@ -692,13 +693,16 @@ function PropertyRow({ entry }: { entry: Entry }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-bold text-text truncate group-hover:text-accent transition-colors">{property.name}</p>
-            <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${text} ${bg} opacity-80`}>
+            <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${text} ${bg}`}>
               {score}
             </div>
           </div>
           <p className="text-[11px] text-text-muted font-medium mt-0.5">
             <span className="text-text-secondary">{property.regime ?? "LMNP"}</span> · {revenue?.monthly_rent ? `${fmt(revenue.monthly_rent)}€/mo` : "Sans loyer"}
           </p>
+          <div className="mt-1.5 h-[3px] rounded-full overflow-hidden w-4/5" style={{ background: cfPositive ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)" }}>
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${barPct}%`, background: cfPositive ? "var(--green)" : "var(--red)" }} />
+          </div>
         </div>
 
         <div className="text-right shrink-0">
@@ -770,35 +774,37 @@ function ArticleSheet({ article, onClose }: { article: Article; onClose: () => v
 
 function BankRates() {
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+    <div className="bg-card border border-border rounded-[22px] p-4 space-y-3 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-text flex items-center gap-2">
-          <Activity size={16} className="text-accent" />
-          Taux du Marché
+          <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Activity size={14} className="text-accent" strokeWidth={2} />
+          </div>
+          Taux du marché
         </h2>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green/10 text-green rounded-full border border-green/20">
-          <ArrowDown size={10} />
-          <span className="text-[10px] font-bold">-0.15% ce mois</span>
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-green/10 text-green rounded-full border border-green/20">
+          <ArrowDown size={10} strokeWidth={3} />
+          <span className="text-[10px] font-bold">↓ −0.15%</span>
         </div>
       </div>
 
       <div className="overflow-x-auto -mx-1 px-1">
-        <table className="w-full text-[11px]">
+        <table className="w-full">
           <thead>
-            <tr className="text-text-secondary border-b border-border/50">
-              <th className="text-left font-medium py-2">Banque</th>
-              <th className="text-center font-medium py-2">15 ans</th>
-              <th className="text-center font-medium py-2">20 ans</th>
-              <th className="text-center font-medium py-2">25 ans</th>
+            <tr className="border-b border-border/50">
+              <th className="text-left text-[9px] font-black uppercase tracking-widest text-text-muted py-2">Banque</th>
+              <th className="text-center text-[9px] font-black uppercase tracking-widest text-text-muted py-2">15 ans</th>
+              <th className="text-center text-[9px] font-black uppercase tracking-widest text-text-muted py-2">20 ans</th>
+              <th className="text-center text-[9px] font-black uppercase tracking-widest text-text-muted py-2">25 ans</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/30">
             {MARKET_RATES.map((b) => (
-              <tr key={b.bank} className="group hover:bg-bg/50 transition-colors">
-                <td className="py-2.5 font-semibold text-text">{b.bank}</td>
-                <td className="py-2.5 text-center text-text-secondary">{b.rate15}%</td>
-                <td className="py-2.5 text-center text-accent font-bold">{b.rate20}%</td>
-                <td className="py-2.5 text-center text-text-secondary">{b.rate25}%</td>
+              <tr key={b.bank} className="hover:bg-bg/50 transition-colors">
+                <td className="py-2.5 text-sm font-semibold text-text">{b.bank}</td>
+                <td className="py-2.5 text-center font-mono text-[12px] text-text-secondary">{b.rate15}%</td>
+                <td className="py-2.5 text-center font-mono text-[12px] font-bold text-accent">{b.rate20}%</td>
+                <td className="py-2.5 text-center font-mono text-[12px] text-text-secondary">{b.rate25}%</td>
               </tr>
             ))}
           </tbody>
@@ -988,21 +994,34 @@ export default function DashboardPage() {
       
       <div className="relative px-4 pt-8 pb-12 max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-end justify-between px-1">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-black text-text tracking-tight leading-none bg-gradient-to-r from-text to-text-secondary bg-clip-text text-transparent">Tableau de bord</h1>
-            <div className="text-text-muted text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                Diagnostic Stratégique
+        <div className="px-1 space-y-3">
+          <div className="flex items-end justify-between">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-black text-text tracking-tight leading-none bg-gradient-to-r from-text to-text-secondary bg-clip-text text-transparent">Tableau de bord</h1>
+              <div className="text-text-muted text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                  Diagnostic Stratégique
+              </div>
             </div>
+            {entries.length > 0 && (
+              <div className="text-right">
+                <p className="font-mono font-bold text-xl text-accent leading-none">{fmtK(patrimoineNet)}</p>
+                <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-1">{entries.length} bien{entries.length > 1 ? "s" : ""} · net</p>
+              </div>
+            )}
           </div>
           {entries.length > 0 && (
-            <div className="flex flex-col items-end gap-1">
-                <div className="flex items-center gap-1.5 bg-green/10 text-green text-[10px] font-extrabold px-3 py-1.5 rounded-full border border-green/20 shadow-sm">
-                    <TrendingUp size={12} strokeWidth={3} />
-                    PV LATENTE +{growthPct.toFixed(1)}%
-                </div>
-                <span className="text-[9px] text-text-muted font-bold mr-1">Rendement pondéré</span>
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-green/10 text-green border border-green/20 flex items-center gap-1">
+                <TrendingUp size={10} strokeWidth={3} />
+                +{fmt(cashflowMensuel)} €/mo
+              </span>
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-yellow/10 text-yellow border border-yellow/20">
+                {rendementNet.toFixed(1).replace(".", ",")} % rendement
+              </span>
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
+                {fmtK(projection10ans)} dans 10 ans
+              </span>
             </div>
           )}
         </div>
@@ -1063,7 +1082,7 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-text">Mes biens</p>
               <Link href="/biens" className="text-[11px] text-accent font-medium">Voir tout</Link>
             </div>
-            {entries.map(e => <PropertyRow key={e.property.id} entry={e} />)}
+            {entries.map(e => <PropertyRow key={e.property.id} entry={e} maxCashflow={Math.max(...entries.map(x => Math.abs(x.cashflow)), 1)} />)}
             <Link href="/biens/nouveau"
               className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border text-xs font-medium text-text-secondary hover:text-text hover:border-accent/40 transition-colors">
               <Plus size={13} />Ajouter un bien
