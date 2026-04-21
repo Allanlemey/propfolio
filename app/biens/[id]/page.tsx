@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { useUserTmi } from "@/hooks/use-user-tmi";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -197,7 +197,7 @@ type MarketData = {
   lastUpdate: string | null;
 } | null;
 
-function TabOverview({
+const TabOverview = memo(function TabOverview({
   property,
   loan,
   marketData,
@@ -423,11 +423,11 @@ function TabOverview({
       </div>
     </div>
   );
-}
+});
 
 // ── Tab: Cashflow ─────────────────────────────────────────────
 
-function TabCashflow({
+const TabCashflow = memo(function TabCashflow({
   lines,
   total,
   tmi,
@@ -507,11 +507,11 @@ function TabCashflow({
       </p>
     </div>
   );
-}
+});
 
 // ── Tab: Score ────────────────────────────────────────────────
 
-function TabScore({ scores }: { scores: ScoreDetail }) {
+const TabScore = memo(function TabScore({ scores }: { scores: ScoreDetail }) {
   const CRITERIA = [
     { key: "rendement" as const, label: "Rendement net", weight: 25 },
     { key: "cashflow" as const, label: "Cashflow", weight: 25 },
@@ -596,7 +596,7 @@ function TabScore({ scores }: { scores: ScoreDetail }) {
       )}
     </div>
   );
-}
+});
 
 // ── Prix m² estimation result type ───────────────────────────
 
